@@ -1,4 +1,4 @@
-from TKgui.handle_widgets import lock_widget, unlock_widget
+from gui.handle_widgets import lock_widget, unlock_widget
 from galaxy.implemented_task_galaxy import compare_galaxy, create_backup_datas, create_boost_data
 from galaxy.level_1 import loading_folder, print_datas
 from galaxy.level_2 import get_answer_for_backup, get_answer_for_boost

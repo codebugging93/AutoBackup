@@ -1,6 +1,6 @@
 import tkinter as tk
 import os
-from TKgui.custom_widgets import *
+from gui.custom_widgets import *
 from utils.constants import APPNAME
 
 

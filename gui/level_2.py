@@ -7,12 +7,12 @@ from threading import Thread
 from implemented.main_datas import backup_data, configs
 from utils.constants import BACKUP_MODES, CMP_MODES
 
-from TKgui.answer import answer_frame
-from TKgui.widgets import entry_ans, text_log
-from TKgui.messages import *
-from TKgui.backup import backup_all, backup_file, backup_boost
-from TKgui.handle_widgets import unlock_widget, unlock_buttons, lock_buttons, lock_ui, unlock_ui
-from TKgui.level_3 import ready_aftercheck_answer
+from gui.answer import answer_frame
+from gui.widgets import entry_ans, text_log
+from gui.messages import *
+from gui.backup import backup_all, backup_file, backup_boost
+from gui.handle_widgets import unlock_widget, unlock_buttons, lock_buttons, lock_ui, unlock_ui
+from gui.level_3 import ready_aftercheck_answer
 
 
 _able_commands = [] # 선택지 제외용 리스트

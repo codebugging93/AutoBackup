@@ -10,19 +10,19 @@ from tkinter.filedialog import askdirectory
 from tkinter.messagebox import showinfo, showerror, askyesno
 
 from implemented.compare_state import CMP_STATS, get_state, get_state_str
-from TKgui.binding import bind_progress
-from TKgui.layout import decorate_layout, expand_layout
-from TKgui.widgets import *
-from TKgui.handle_widgets import *
-from TKgui.implemented_tasks import compare, get_dir_size, get_path_info, get_root_size, get_samedir_tree, listbox_clear, listbox_update
-from TKgui.messages import *
-from TKgui.exfat import toggle_exfat_btn
+from gui.binding import bind_progress
+from gui.layout import decorate_layout, expand_layout
+from gui.widgets import *
+from gui.handle_widgets import *
+from gui.implemented_tasks import compare, get_dir_size, get_path_info, get_root_size, get_samedir_tree, listbox_clear, listbox_update
+from gui.messages import *
+from gui.exfat import toggle_exfat_btn
 from utils.byte import convert_byte
 from implemented.main_datas import main_prog, sub_prog, backup_data, configs, original, target, reset_datas
 from utils.constants import APPNAME, CMP_MODES
 from utils.path import get_root_files_count
 
-from TKgui.level_2 import ready_backup_answer
+from gui.level_2 import ready_backup_answer
 
 
 
@@ -261,18 +261,7 @@ def btncmd_exfat():
 
 
 
-from paths import paths
-i = -1
-def macro():
-    global i
 
-    if i == len(paths) - 1:
-        text_log.print("매크로 끝")
-        return None
-
-    i += 1
-    o, t = paths[i]
-    task1(o, t)
 
     
 def task1(path1, path2):

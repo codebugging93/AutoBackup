@@ -11,7 +11,7 @@ wizminecraft(상어단)
 """
 
 import tkinter as tk
-from TKgui.widgets import root 
+from gui.widgets import root 
 
 root.mainloop()
 

@@ -3,8 +3,8 @@
 from utils.Classes.BackupData import BackupData
 from implemented.trashbin import RemovePathNotEmpty, get_app_trashbin_path, chk_trashbin_empty
 from implemented.trashbin import mk_trashbin
-from TKgui.widgets import text_log
-from TKgui.implemented_tasks import boost_files, copy_files, copy_folders, remove_files, remove_folders, renew_files
+from gui.widgets import text_log
+from gui.implemented_tasks import boost_files, copy_files, copy_folders, remove_files, remove_folders, renew_files
 
 
 

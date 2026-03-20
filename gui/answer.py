@@ -1,5 +1,5 @@
-from TKgui.widgets import entry_ans, text_log
-from TKgui.messages import msg_wrong_ans
+from gui.widgets import entry_ans, text_log
+from gui.messages import msg_wrong_ans
 
 
 def answer_frame(cmd, correct_answers):

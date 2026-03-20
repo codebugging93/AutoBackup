@@ -1,4 +1,4 @@
-from TKgui.implemented_tasks import compare
+from gui.implemented_tasks import compare
 from galaxy.implemented.discard import discard_dummy_datas
 from implemented.main_datas import main_prog, sub_prog, backup_data
 from galaxy.implemented.backup import backup_copy, backup_remove, backup_boost

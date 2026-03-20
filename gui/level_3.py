@@ -7,12 +7,12 @@ from threading import Thread
 
 from implemented.main_datas import backup_data, aftercheck_data
 
-from TKgui.backup import backup_boost, backup_all
-from TKgui.widgets import text_log, entry_ans
-from TKgui.handle_widgets import lock_widget, unlock_widget, lock_buttons, unlock_buttons, lock_ui, unlock_ui
-from TKgui.answer import answer_frame
-from TKgui.messages import *
-from TKgui.implemented_tasks import aftercheck, listbox_update
+from gui.backup import backup_boost, backup_all
+from gui.widgets import text_log, entry_ans
+from gui.handle_widgets import lock_widget, unlock_widget, lock_buttons, unlock_buttons, lock_ui, unlock_ui
+from gui.answer import answer_frame
+from gui.messages import *
+from gui.implemented_tasks import aftercheck, listbox_update
 
 
 """

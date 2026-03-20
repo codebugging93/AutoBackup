@@ -1,4 +1,4 @@
-from TKgui.widgets import buttons, entries
+from gui.widgets import buttons, entries
 
 
 def lock_ui():

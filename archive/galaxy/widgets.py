@@ -1,5 +1,5 @@
 import tkinter as tk 
-from TKgui.custom_widgets import EntryWithFrame, CustomText, VerticalScrollbar
+from gui.custom_widgets import EntryWithFrame, CustomText, VerticalScrollbar
 
 __all__ = [
     "root",

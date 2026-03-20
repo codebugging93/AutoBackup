@@ -1,5 +1,5 @@
-from TKgui.handle_widgets import lock_widget, unlock_widget
-from TKgui.messages import msg_wrong_ans
+from gui.handle_widgets import lock_widget, unlock_widget
+from gui.messages import msg_wrong_ans
 from galaxy.widgets import text_log, entry_ans_with_frame
 from implemented.main_datas import configs 
 from utils.constants import BACKUP_MODES

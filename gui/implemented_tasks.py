@@ -12,8 +12,8 @@ from utils.Classes.BackupData import BackupData
 from implemented.main_datas import main_prog, original, target, sub_prog, backup_data, configs, aftercheck_data
 from utils.Classes.Folder import Folder
 
-from TKgui.custom_widgets import LabelListboxWithFrame
-from TKgui.widgets import (
+from gui.custom_widgets import LabelListboxWithFrame
+from gui.widgets import (
     text_log, 
     llboxes, 
     llbox_file_copy, 
