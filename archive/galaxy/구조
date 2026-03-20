@@ -1,0 +1,12 @@
+level은 프로그램의 동작을 대략적으로 나눈 것이다.
+execute는 level을 실행하는 입장에 있으므로 level보다 상위 모듈임이 틀림없다.
+
+execute > level 
+
+init은 execute를 커맨드로서 버튼에 바인딩하기 때문에 execute보다 상위 모듈임이 틀림없다.
+
+init > execute
+
+
+T.C.
+init > execute > level
