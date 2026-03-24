@@ -1,5 +1,5 @@
 from galaxy.level_main import compare_run
-from utils.constants import CMP_MODES
+from system.constants import CMP_MODES
 from implemented.main_datas import configs
 
 

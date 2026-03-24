@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
-from utils.constants import APPNAME
-from utils.path import add_dir_num
+from system.constants import APPNAME
+from system.path import add_dir_num
 
 
 

@@ -1,9 +1,9 @@
 import os
 
-from utils.filecmp_modified import auto_set_filter, cmp_filter
-from utils.path import get_dir_size, get_filename_set, cut_path, get_path_info, get_root_files_count, get_root_size, merge_path
-from utils.DepthList import DepthList, get_depth, is_dlist_equal
-from utils.constants import CMP_STATS, CMP_MODES
+from system.filecmp_modified import auto_set_filter, cmp_filter
+from system.path import get_dir_size, get_filename_set, cut_path, get_path_info, get_root_files_count, get_root_size, merge_path
+from system.DepthList import DepthList, get_depth, is_dlist_equal
+from system.constants import CMP_STATS, CMP_MODES
 
 
 

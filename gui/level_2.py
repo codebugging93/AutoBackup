@@ -5,7 +5,7 @@
 from threading import Thread
 
 from implemented.main_datas import backup_data, configs
-from utils.constants import BACKUP_MODES, CMP_MODES
+from system.constants import BACKUP_MODES, CMP_MODES
 
 from gui.answer import answer_frame
 from gui.widgets import entry_ans, text_log

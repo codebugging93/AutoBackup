@@ -5,7 +5,7 @@ from galaxy.paths import RESULT_PATH
 from galaxy.widgets import *
 
 from implemented.main_datas import original, target, backup_data, main_prog
-from utils.file import copy_file
+from system.file import copy_file
 
 
 

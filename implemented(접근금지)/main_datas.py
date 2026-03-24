@@ -10,10 +10,10 @@ main_prog, sub_prog: Progress
 """
 
 
-from utils.Classes.BackupData import BackupData
-from utils.Classes.ConfigData import ConfigData
-from utils.Classes.Folder import Folder
-from utils.Classes.Progress import Progress
+from system.Classes.BackupData import BackupData
+from system.Classes.ConfigData import ConfigData
+from system.Classes.Folder import Folder
+from system.Classes.Progress import Progress
 
 
 backup_data = BackupData()

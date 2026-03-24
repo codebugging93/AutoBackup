@@ -6,11 +6,11 @@
 
 import os
 
-from utils.path import get_filename_set, merge_path
-from utils.file import copy_file, move_file
-from utils.path import merge_path
-from utils.trashbin import Trashbin
-from utils.counter import dummy_counter
+from system.path import get_filename_set, merge_path
+from system.file import copy_file, move_file
+from system.path import merge_path
+from system.trashbin import Trashbin
+from system.counter import dummy_counter
       
 
     

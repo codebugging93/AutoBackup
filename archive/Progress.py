@@ -1,7 +1,7 @@
 from threading import Thread
 from time import time, sleep
 
-from utils.byte import convert_byte
+from system.byte import convert_byte
 
 
 

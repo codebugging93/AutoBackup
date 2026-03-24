@@ -1,6 +1,6 @@
 import os
 
-from utils.constants import APPNAME
+from system.constants import APPNAME
 from galaxy.widgets import *
 
 def decorate_layout():

@@ -1,8 +1,8 @@
 """ backup 커맨드를 모아놓은 것; 로그를 표시하고, 지정된 작업만 수행한다. """
 
-from utils.Classes.BackupData import BackupData
-from utils.trashbin import RemovePathNotEmpty, get_app_trashbin_path, chk_trashbin_empty
-from utils.trashbin import mk_trashbin
+from system.Classes.BackupData import BackupData
+from system.trashbin import RemovePathNotEmpty, get_app_trashbin_path, chk_trashbin_empty
+from system.trashbin import mk_trashbin
 from gui.widgets import text_log
 from gui.implemented_tasks import boost_files, copy_files, copy_folders, remove_files, remove_folders, renew_files
 

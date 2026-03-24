@@ -1,9 +1,9 @@
 from filecmp import cmp
 import os
 
-from utils.filecmp_modified import cmp_filter, auto_set_filter
-from utils.DepthList import DepthList
-from utils.path import get_filename_set
+from system.filecmp_modified import cmp_filter, auto_set_filter
+from system.DepthList import DepthList
+from system.path import get_filename_set
 
 
 

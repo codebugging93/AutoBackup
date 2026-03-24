@@ -2,8 +2,8 @@
 
 import os
 from pathlib import Path
-from utils.DepthList import DepthError, DepthList, get_depth, split_path
-from utils.counter import dummy_counter
+from system.DepthList import DepthError, DepthList, get_depth, split_path
+from system.counter import dummy_counter
 
 
 def cut_path(path, depth):

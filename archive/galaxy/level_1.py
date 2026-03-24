@@ -1,8 +1,8 @@
 from implemented.compare_state import get_state, get_state_str
-from utils.byte import convert_byte
+from system.byte import convert_byte
 from implemented.main_datas import original, target, backup_data, configs
-from utils.constants import CMP_MODES, CMP_STATS
-from utils.path import get_root_files_count
+from system.constants import CMP_MODES, CMP_STATS
+from system.path import get_root_files_count
 from gui.messages import msg_chk_toponly, msg_chk_same, msg_chk_notsame, msg_chk_partial
 from gui.implemented_tasks import get_dir_size, get_path_info, get_root_size, get_samedir_tree
 

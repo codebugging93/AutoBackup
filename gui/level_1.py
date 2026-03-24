@@ -17,10 +17,10 @@ from gui.handle_widgets import *
 from gui.implemented_tasks import compare, get_dir_size, get_path_info, get_root_size, get_samedir_tree, listbox_clear, listbox_update
 from gui.messages import *
 from gui.exfat import toggle_exfat_btn
-from utils.byte import convert_byte
+from system.byte import convert_byte
 from implemented.main_datas import main_prog, sub_prog, backup_data, configs, original, target, reset_datas
-from utils.constants import APPNAME, CMP_MODES
-from utils.path import get_root_files_count
+from system.constants import APPNAME, CMP_MODES
+from system.path import get_root_files_count
 
 from gui.level_2 import ready_backup_answer
 
