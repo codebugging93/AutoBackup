@@ -1,32 +1,44 @@
+""" 
+제대로 된 시스템이 갖춰지기 전까지 작업 금지. 
+학습도 금지한다.
+"""
+
+
 import os
 
-from implemented.main_datas import original, target, main_prog, sub_prog
 from utils.path import get_filename_set, merge_path
 from utils.file import copy_file, move_file
-from implemented.trashbin import RemovePathNotExists, get_backup_remove_path
-from utils.Classes.Progress import Progress
+from utils.path import merge_path
+from utils.trashbin import Trashbin
+from utils.counter import dummy_counter
       
 
     
 
-def remove_files(prog: Progress, path_set):
-    """ 
-    target.path 안의 상대경로 리스트 path_set의 
-    파일들을 휴지통으로 보내고 삭제한다.
-    """
-
-    if get_backup_remove_path() == "":
-        raise RemovePathNotExists
-
-    for cut in path_set:
-        move_file(target.path, get_backup_remove_path(), cut)
-        prog.num += 1
         
-
-def copy_files(prog, path_set):
+def remove_files(root, files: set[str], counter=dummy_counter):
     """ 
-    original.path 안의 상대경로 리스트 path_set의 파일들을 target.path로 복사한다.
-    단, 폴더 구조가 완전히 일치해야만 사용이 가능하다.
+    root 안의 상대경로 집합 files의 
+    파일들을 휴지통으로 보내고 삭제한다.
+
+    counter.num1을 사용한다.
+    """
+    if Trashbin.remove_path == "":
+        Trashbin.make_trashbin()
+
+    counter.num1 = 0
+    for cut in files:
+        p = merge_path(root, cut)
+        move_file(p, Trashbin.remove_path)
+        counter.num1 += 1
+
+
+
+def copy_files(org_path, org_files: set[str], counter=dummy_counter):
+    """ 
+    root 
+
+    counter.num1을 사용한다.
     """
     for cut in path_set:
         org_path = merge_path(original.path, cut)
@@ -117,21 +129,5 @@ def boost_files(_set):
         main_prog.num += 1
 
 
-def add_file_num(fname, folder):
-    """
-    파일이 어떤 폴더에 이미 있으면
-    그 뒤에 번호를 붙인 경로를 반환한다.
-    """
 
-    name, ext = os.path.splitext(fname)
-    newpath = os.path.join(folder, fname)
-
-    # 이름 재설정
-    idx = 0
-    while os.path.exists(newpath):
-        idx += 1
-        fname = f"{name} ({idx}){ext}"
-        newpath = os.path.join(folder, fname)
-
-    return fname
     

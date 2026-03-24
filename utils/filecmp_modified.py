@@ -1,5 +1,8 @@
 """ EXFAT 드라이브에서 filecmp의 cmp 함수가 속도가 느리다.
-    그래서 속도를 개선한 함수 cmp_exfat을 탑재하였다.
+    그래서 속도를 개선한 함수 cmp_filter과 auto_set_filter 함수를 탑재하였다.
+
+    서로 다른 드라이브 간에 여러 파일의 cmp 작업을 하기 전에
+    auto_set_filter 함수를 반드시 사용해서 필터를 자동 선택 해야 한다.
 """
 
 

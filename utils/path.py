@@ -2,37 +2,8 @@
 
 import os
 from pathlib import Path
-
-
-class DepthError(Exception):
-    def __init__(self, value):
-        self.value = value
-
-    def __str__(self):
-        return f"depth는 음수일 수 없음 : {self.value}"
-    
-
-def split_path(path_string) -> list:
-    """
-    경로를 경로 구분자를 기준으로 쪼개어 리스트로 저장
-    복호화는 Path(*path_list)
-
-    "/storage/emulated/0/DCIM/abcde.txt"는 
-    ['\\', 'storage', 'emulated', '0', 'DCIM', 'abcde.txt']가 됨
-    """
-    p = Path(path_string)
-    return list(p.parts)
-
-
-def get_depth(path):
-    """ 
-    A/B/C/D에서 depth = 4
-    /A/B/C/D에서 depth = 5
-
-    return len(split_path(path))를 실행할 뿐임.
-    그래서 이미 path list가 있을때는 쓰지 말 것.
-    """
-    return len(split_path(path))
+from utils.DepthList import DepthError, DepthList, get_depth, split_path
+from utils.counter import dummy_counter
 
 
 def cut_path(path, depth):
@@ -71,6 +42,18 @@ def cut_path(path, depth):
 def merge_path(*paths):
     """ cut_path했던걸 다시 합치는 함수 """
     return str(Path(*paths))
+
+
+# 경로 분해/합체 테스트 코드
+
+# p = "D:\\내 파일\\바탕화면\\스크린샷.jpg"
+# o = "D:\\내 파일\\바탕화면\\스크린샷.jpg"
+# cut = cut_path(p, get_depth(o))
+# print(cut) # 자름
+
+# print(merge_path(o, cut)) # 원상복귀됨
+
+
     
 def get_filename_set(path) -> set: 
     """
@@ -142,19 +125,96 @@ def add_dir_num(path, folder):
     return add_file_num(path, folder)
 
 
-if __name__ == "__main__":
-    pass
+
+#####################
+# 다소 무거운 작업들 
+#####################
+
+def get_path_info(path, counter=dummy_counter) -> tuple[DepthList, int, int]:
+    """
+    depthlist, 폴더 수, 파일 수 를 한번에 구하는 함수
+
+    counter.num1을 사용한다.
+    """
+    path = os.path.normpath(path)
+    path_depth = get_depth(path)
+
+    dlist = DepthList()
+    files = 0
+    folders = 0
+
+    counter.num1 = 0
+    for root, dirs, files in os.walk(path):
+        cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
+        dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
+        
+        files += len(files)
+        folders += 1
+        counter.num1 = folders 
+        # UI가 읽을 값
+
+    return dlist, folders, files
+
+
+def get_relpath_dlist(path, counter=dummy_counter) -> DepthList:
+    """
+    path에서부터 하위 폴더를 탐색하여
+    상대 경로(relative path, 줄여서 relpath)가 들어있는 DepthList를 반환한다.
+
+    counter.num1을 사용한다.
+    """
+
+    path = os.path.normpath(path)
+    path_depth = get_depth(path)
+    dlist = DepthList()
+
+    counter.num1 = 0
+    for root, dirs, files in os.walk(path):
+        cut = cut_path(root, path_depth) 
+        dlist.add(cut) 
+        counter.num1 += 1
+
+    return dlist
+
+
+def get_dir_size(path, counter=dummy_counter) -> int:
+    """ 
+    폴더 path의 용량 측정 
+    counter.num1을 사용한다.
+    """
+    total_size = 0
+
+    counter.num1 = 0
+    for root, dirs, files in os.walk(path):
+        for i in files:
+            path = os.path.join(root, i)
+            total_size += os.path.getsize(path)
+            counter.num1 = total_size
+
+    return total_size
+
+
+def get_root_size(path, counter=dummy_counter) -> int:
+    """ 
+    루트 폴더의 파일 용량만 측정 
+    counter.num1을 사용한다.
+    """
+    # get_dir_size에서 break만 추가한 코드다.
+
+    total_size = 0
+
+    counter.num1 = 0
+    for root, dirs, files in os.walk(path):
+        for i in files:
+            path = os.path.join(root, i)
+            total_size += os.path.getsize(path)
+            counter.num1 = total_size
+        break # 여기가 추가됨
+
+    return total_size
 
 
 
 
 
 
-# 경로 분해/합체 테스트 코드
-
-# p = "D:\\내 파일\\바탕화면\\스크린샷.jpg"
-# o = "D:\\내 파일\\바탕화면\\스크린샷.jpg"
-# cut = cut_path(p, get_depth(o))
-# print(cut) # 자름
-
-# print(merge_path(o, cut))

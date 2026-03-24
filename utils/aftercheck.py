@@ -1,9 +1,8 @@
 from filecmp import cmp
 import os
 
-from implemented.exFATcmp import cmp_filter
-from implemented.DepthList import DepthList
-from implemented.main_datas import configs, original, target, main_prog, sub_prog
+from utils.filecmp_modified import cmp_filter, auto_set_filter
+from utils.DepthList import DepthList
 from utils.path import get_filename_set
 
 

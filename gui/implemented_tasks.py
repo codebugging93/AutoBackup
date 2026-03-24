@@ -1,12 +1,12 @@
 import os
 
-import implemented.compare
+import utils.compare
 import implemented.file
 import implemented.aftercheck 
 import implemented.path
 from utils.constants import BACKUP_MODES
 import utils.path
-import implemented.DepthList
+import utils.DepthList
 
 from utils.Classes.BackupData import BackupData
 from implemented.main_datas import main_prog, original, target, sub_prog, backup_data, configs, aftercheck_data
@@ -121,7 +121,7 @@ def copy_files(_set):
     
         
 # 폴더 삭제
-def remove_folders(tree: implemented.DepthList.DepthList):
+def remove_folders(tree: utils.DepthList.DepthList):
     if tree.num == 0:
         return None
     
@@ -139,7 +139,7 @@ def remove_folders(tree: implemented.DepthList.DepthList):
     
 
 # 폴더 복사
-def copy_folders(tree: implemented.DepthList.DepthList):
+def copy_folders(tree: utils.DepthList.DepthList):
     if tree.num == 0:
         return None
     
@@ -221,22 +221,22 @@ def _folder_update(llbox: LabelListboxWithFrame, _deplist, path):
 
 
 """ compare 구현 """
-def _checkloading(sametree: implemented.DepthList.DepthList) -> tuple[list, int]:
+def _checkloading(sametree: utils.DepthList.DepthList) -> tuple[list, int]:
     main_prog.reset(prefix="[체크 전 로딩]", total=backup_data.tree_same.num)
     main_prog.update_progress()
     
-    file_list, total_file = implemented.compare.checkloading(sametree)
+    file_list, total_file = utils.compare.checkloading(sametree)
     
     main_prog.stop()
     
     return file_list, total_file
     
 
-def _checkfolder(sametree: implemented.DepthList.DepthList):
+def _checkfolder(sametree: utils.DepthList.DepthList):
     main_prog.reset(prefix="[폴더 체크]")
     main_prog.update_wait()
     
-    copy, rmv = implemented.compare.checkfolder(sametree)
+    copy, rmv = utils.compare.checkfolder(sametree)
     
     main_prog.stop()
 
@@ -251,7 +251,7 @@ def _checkfile(file_list: list, total_file: int):
     main_prog.update_progress()
     sub_prog.update_progress()
     
-    copy, renew, rmv, same = implemented.compare.checkfile(file_list)
+    copy, renew, rmv, same = utils.compare.checkfile(file_list)
     
     main_prog.stop()
     sub_prog.stop()

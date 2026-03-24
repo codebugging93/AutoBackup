@@ -1,5 +1,5 @@
-from implemented.DepthList import DepthList
-from utils.path import get_depth
+from utils.DepthList import DepthList
+from utils.DepthList import get_depth
 import os
 
 

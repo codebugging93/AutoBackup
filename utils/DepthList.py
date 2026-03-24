@@ -1,33 +1,63 @@
-""" dictionary를 이용하면 이런 복잡한 클래스를 만들지 않아도 될 것 같다.
-depth가 0인걸 모으고
-1인걸 모으고
-등등 모으면 되지 않을까?
+""" 
+DepthList라는 새로운 자료형을 정의해 놓았다.
 
-교집합 만들때도 
-dict.keys를 먼저 교집합 때리고 
-같은 depth를 가진 키를 뽑아온 다음에
-그 키를 넣어서 양쪽 set을 교집합 때리면 훨씬 빠르겠네.
-
-보아하니 List는 Depth 관리를 위해서 반드시 써야 하는 것 같다.
-
+depth의 정의는 get_depth 함수를 참고하라.
 """
+from pathlib import Path
+
+
+
+#########################
+# depth에 관한 기본적인 정의
+#########################
+class DepthError(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return f"depth는 음수일 수 없음 : {self.value}"
+
+
+def split_path(path_string) -> list:
+    """
+    경로를 경로 구분자를 기준으로 쪼개어 리스트로 저장
+    복호화는 Path(*path_list)
+
+    "/storage/emulated/0/DCIM/abcde.txt"는 
+    ['\\', 'storage', 'emulated', '0', 'DCIM', 'abcde.txt']가 됨
+    """
+    p = Path(path_string)
+    return list(p.parts)
+
+
+def get_depth(path):
+    """ 
+    A/B/C/D에서 depth = 4
+    /A/B/C/D에서 depth = 5
+
+    return len(split_path(path))를 실행할 뿐임.
+    그래서 이미 path list가 있을때는 쓰지 말 것.
+    """
+    return len(split_path(path))
 
 
 
 
-from utils.path import get_depth, DepthError
 
-
+#########################
+# DepthList 정의
+#########################
 MAX_DEPTH = 64  # DepthList의 최대 깊이
-
 class DepthList:
     """
-    path를 depth에 따라 분류할 수 있는 클래스
-    상대경로도 지원
+    한 폴더의 내용물을 depth에 따라 분류하여 보관하는 리스트.
+    리스트 안에 집합이 MAX_DEPTH개만큼 있으며,
 
-    주어진 메소드 이외의 사용은 지양할 것
-    
-    self.num은 호출 시마다 업데이트 됨 
+    경로 추가시에는 add() 메소드로 추가해야만 하며,
+    get_depth() 함수를 사용하여 depth 측정 후 
+    리스트의 N번째 집합에 경로를 넣는 방식으로 분류한다.
+
+    이외에도 교집합, 차집합 같은 편리한 기능들을 제공한다.
     """
 
     def __init__(self):
@@ -94,6 +124,7 @@ class DepthList:
 
 
     def flatten(self):
+        """오름차순으로 탐색. dlist의 첫번째 항목부터 차례로 순회한다."""
         for paths in self:
             for cut in paths:
                 yield cut
@@ -133,7 +164,7 @@ def check_length(*depth_lists):
             raise Exception("MAX_DEPTH 불일치 에러")
 
 
-def is_trees_equal(dlist_1, dlist_2, dlist_intersect):
+def is_dlist_equal(dlist_1, dlist_2, dlist_intersect):
     """
     두 트리가 같은지 비교하는데, 교집합을 가지고 있는 경우에 쓸 수 있다.
     단순 비교보다 훨씬 빠른 비교를 제공한다.
@@ -159,7 +190,13 @@ def is_trees_equal(dlist_1, dlist_2, dlist_intersect):
 
 
 
-"""def _deprecated_get_samedir_tree(org_path, tar_path):
+
+"""
+사용하지 않는 함수(deprecated)
+어차피 양쪽 폴더의 집합을 모두 구해야 하며,
+교집합도 손쉽게 구할수 있으므로 이 함수를 쓸 이유가 없다.
+
+def _deprecated_get_samedir_tree(org_path, tar_path):
     
     두 폴더 사이에서 이름이 같은 폴더를 찾아내
     원래 경로와 폴더 경로를 분리한 다음,

@@ -3,7 +3,12 @@
 
 # auto_set_filter("G:\\")
 # print(_get_filter())
+import os
+import time
 
-
-l = [1, 2, 3]
-print(l[4])
+for root, dirs, files in os.walk("D:/Studying"):
+    print(root)
+    print(dirs)
+    print(files)
+    print("---------------------")
+    time.sleep(10)
