@@ -4,6 +4,8 @@ import os
 
 def copy_file(src, dst, mkdirs=True, metadata=True):
     """
+    src, dst는 절대경로를 받는다.
+
     mkdirs: 어떤 파일이 속할 폴더를 자동 생성하는 기능
     metadata: 파일의 메타데이터까지 복사하는 기능(수정된 시간 포함)
 

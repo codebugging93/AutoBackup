@@ -3,7 +3,6 @@
 import os
 from pathlib import Path
 from system.DepthList import DepthError, DepthList, get_depth, split_path
-from system.counter import dummy_counter
 
 
 def cut_path(path, depth):
@@ -53,7 +52,6 @@ def merge_path(*paths):
 
 # print(merge_path(o, cut)) # 원상복귀됨
 
-
     
 def get_filename_set(path) -> set: 
     """
@@ -97,11 +95,13 @@ def get_root_files_count(path):
         break
 
     return res
+
  
 def add_file_num(fname, folder):
     """
     파일이 어떤 폴더에 이미 있으면
     그 뒤에 번호를 붙인 경로를 반환한다.
+    * 중복된 파일이 있을때 덮어쓰기를 방지할 수 있다.
     """
 
     name, ext = os.path.splitext(fname)
@@ -130,7 +130,7 @@ def add_dir_num(path, folder):
 # 다소 무거운 작업들 
 #####################
 
-def get_path_info(path, counter=dummy_counter) -> tuple[DepthList, int, int]:
+def get_path_info(path) -> tuple[DepthList, int, int]:
     """
     depthlist, 폴더 수, 파일 수 를 한번에 구하는 함수
 
@@ -143,20 +143,20 @@ def get_path_info(path, counter=dummy_counter) -> tuple[DepthList, int, int]:
     files = 0
     folders = 0
 
-    counter.num1 = 0
+    # counter.num1 = 0
     for root, dirs, files in os.walk(path):
         cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
         dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
         
         files += len(files)
         folders += 1
-        counter.num1 = folders 
+        # counter.num1 = folders 
         # UI가 읽을 값
 
     return dlist, folders, files
 
 
-def get_relpath_dlist(path, counter=dummy_counter) -> DepthList:
+def get_relpath_dlist(path) -> DepthList:
     """
     path에서부터 하위 폴더를 탐색하여
     상대 경로(relative path, 줄여서 relpath)가 들어있는 DepthList를 반환한다.
@@ -168,33 +168,33 @@ def get_relpath_dlist(path, counter=dummy_counter) -> DepthList:
     path_depth = get_depth(path)
     dlist = DepthList()
 
-    counter.num1 = 0
+    # counter.num1 = 0
     for root, dirs, files in os.walk(path):
         cut = cut_path(root, path_depth) 
         dlist.add(cut) 
-        counter.num1 += 1
+        # counter.num1 += 1
 
     return dlist
 
 
-def get_dir_size(path, counter=dummy_counter) -> int:
+def get_dir_size(path) -> int:
     """ 
     폴더 path의 용량 측정 
     counter.num1을 사용한다.
     """
     total_size = 0
 
-    counter.num1 = 0
+    # counter.num1 = 0
     for root, dirs, files in os.walk(path):
         for i in files:
             path = os.path.join(root, i)
             total_size += os.path.getsize(path)
-            counter.num1 = total_size
+            # counter.num1 = total_size
 
     return total_size
 
 
-def get_root_size(path, counter=dummy_counter) -> int:
+def get_root_size(path) -> int:
     """ 
     루트 폴더의 파일 용량만 측정 
     counter.num1을 사용한다.
@@ -203,12 +203,12 @@ def get_root_size(path, counter=dummy_counter) -> int:
 
     total_size = 0
 
-    counter.num1 = 0
+    # counter.num1 = 0
     for root, dirs, files in os.walk(path):
         for i in files:
             path = os.path.join(root, i)
             total_size += os.path.getsize(path)
-            counter.num1 = total_size
+            # counter.num1 = total_size
         break # 여기가 추가됨
 
     return total_size

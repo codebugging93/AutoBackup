@@ -26,7 +26,7 @@ def convert_byte(byte) -> tuple[str, str]:
     if exponential == 0:
         detail = ""
     else:
-        detail = f"({original_byte:,}{_byte_strings[0]})"
+        detail = f"({original_byte:,} 바이트)"
     
     return byte_str, detail
 
