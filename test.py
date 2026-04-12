@@ -1,14 +1,15 @@
-# from utils.exFATcmp import auto_set_filter, _get_filter
-
-
-# auto_set_filter("G:\\")
-# print(_get_filter())
-import os
+from tkinter.filedialog import *
 import time
+import os
+from system.filecmp_modified import auto_set_filter, cmp_filter 
 
-for root, dirs, files in os.walk("D:/Studying"):
-    print(root)
-    print(dirs)
-    print(files)
-    print("---------------------")
-    time.sleep(10)
+
+a = askopenfilename()
+b = askopenfilename()
+
+
+
+at = time.time()
+auto_set_filter(os.path.dirname(b))
+print(cmp_filter(a, b))
+print(time.time() - at)
