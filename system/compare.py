@@ -1,113 +1,197 @@
 import os
 
 from system.filecmp_modified import auto_set_filter, cmp_filter
-from system.path import get_dir_size, get_filename_set, cut_path, get_path_info, get_root_files_count, get_root_size, merge_path
-from system.DepthList import DepthList, get_depth, is_dlist_equal
-from system.constants import CMP_STATS, CMP_MODES
+from system.path import get_dirname_set, get_filename_set, merge_path
 
 
-
-def compare(path1, path2, compare_mode):
-    # path1, path2에 대해 수행
-    dlist1, folders1, files1, size1 = load_folder(path1, compare_mode)
-    dlist2, folders2, files2, size2 = load_folder(path2, compare_mode)
-
-    # check_folder에 해당하는 코드 
-    dlist_same = dlist1.intersection(dlist2) # 공통의 폴더. S = A & B
-    dlist_copy = dlist1.difference(dlist_same) # 복사할 폴더. A - S
-    dlist_rmv = dlist2.difference(dlist_same) # 삭제할 폴더. B - S
-
-    result_copy, result_renew, result_rmv, result_same = checkfile(path1, path2, dlist_same)
-
-    return result_copy, result_renew, result_rmv, result_same
-
-
-def load_folder(path, compare_mode):
-    # 트리, 폴더수, 파일수   
-    if compare_mode == CMP_MODES.ALL:
-        dlist, folders, files = get_path_info(path) 
-    elif compare_mode == CMP_MODES.TOP_ONLY:
-        dlist = DepthList()
-        dlist.add("")
-        folders = 0
-        files = get_root_files_count(path)
-    
-    # 크기
-    if compare_mode == CMP_MODES.ALL:
-        size = get_dir_size(path)
-    elif compare_mode == CMP_MODES.TOP_ONLY:
-        size = get_root_size(path)
-
-    return dlist, folders, files, size
-
-
-def checkfile(path1, path2, dlist_intersection: DepthList) -> tuple[list, list, list, list]:
-    """ 
-    file_list를 토대로 복사/삭제/갱신/동일한 파일을 
-    data에 등록한다.
-    compare_file는 cmp 함수와 비슷하다.
+class CompareResult:
     """
-    path1_depth = get_depth(path1)
-    path2_depth = get_depth(path2)
-    result_copy, result_renew, result_rmv, result_same = [], [], [], []
+    dirs_copy: 복사할 폴더가 포함된 상대경로 리스트
+    dirs_rmv: 삭제할 폴더가 포함된 상대경로 리스트
+    dirs_same: 공통된 디렉토리가 포함된 상대경로 리스트
 
-    auto_set_filter() # 검사 속도 향상
+    dirs_copy와 dirs_rmv에 들어있는 디렉토리는 서브디렉토리를 포함한 폴더이며,
+    dirs_same는 서브디렉토리를 모두 따로따로 저장하여 길이가 길다.
 
-    # 오름차순으로 탐색. dlist의 첫번째 항목부터 차례로 순회한다.
-    for cut in dlist_intersection.flatten():
-        # 폴더 절대경로
-        folder1 = merge_path(path1, cut)
-        folder2 = merge_path(path2, cut)
+    files_copy, files_rmv, files_renew, files_same은 모두 상대 경로이다.
+    """
 
-        # 이름만 같은 파일을 추출함
-        org_set = get_filename_set(folder1)
-        tar_set = get_filename_set(folder2)
-        same_set = org_set & tar_set
+    def __init__(self):
+        self.dirs_copy = [] 
+        self.dirs_rmv = []
+        self.dirs_same = []
 
-        # 같은 파일중에서 진짜 같은 파일을 추려냄
-        for f in same_set:
+        self.files_copy = []
+        self.files_rmv = []
+        self.files_renew = []
+        self.files_same = []
+
+
+
+def compare(org_path, tar_path):
+    # 복사/삭제할 폴더와 공통된 폴더를 구함 
+    result = compare_dirs(org_path, tar_path)
+    result_files = compare_files(org_path, tar_path, result.dirs_same)
+
+    result.files_copy = result_files.files_copy
+    result.files_rmv = result_files.files_rmv
+    result.files_renew = result_files.files_renew
+    result.files_same = result_files.files_same
+
+    return result
+
+
+def compare_files(org_path, tar_path, dirs_same: list):
+    """ 
+    org_path가 백업하고자 하는 원본 폴더(original),
+    tar_path가 덮어씌우고자 하는 사본 폴더(target) 경로이다.
+    둘 다 절대 경로여야 한다.
+    
+    dirs_same은 compare_dirs()를 토대로 얻어낸 결과이다.
+
+    dirs_same의 값 하나하나에 대해서 파일들을 비교하여 차이점을 저장하고,
+    복사/갱신/삭제/공통 파일 리스트를 반환한다.
+    """
+    copy, renew, rmv, same = [], [], [], []
+
+    auto_set_filter(tar_path) # 검사 속도 향상
+
+    # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
+    for rel_path in dirs_same: # rel_path: 상대경로
+        # 원본과 사본에 동시에 존재하는 폴더의 절대경로
+        org_dir = merge_path(org_path, rel_path)
+        tar_dir = merge_path(tar_path, rel_path)
+
+        # 이름이 같은 파일을 추출함
+        org_files = get_filename_set(org_dir)
+        tar_files = get_filename_set(tar_dir)
+        common_names = org_files & tar_files
+
+        # 이름이 동일하면서 내용까지 동일한지 검사함
+        for fname in common_names:
             # 파일 경로
-            file1 = os.path.join(folder1, f)
-            file2 = os.path.join(folder2, f)
-            cut = cut_path(file1, path1_depth) # 경로를 잘라서 보관함 (메모리 절약)
+            file1 = os.path.join(org_dir, fname)
+            file2 = os.path.join(tar_dir, fname)
 
             # 비교
-            if cmp_filter(file1, file2): # 내용이 동일함
-                result_same.append(cut) # 같은 파일로 넣음
-            else: # 내용이 다름
-                result_renew.append(cut) # 갱신할 파일로 넣음
+            fpath = os.path.join(rel_path, file1) # 상대 경로로 저장
+            if cmp_filter(file1, file2): # 내용이 동일하면 같은 파일
+                same.append(fpath) 
+            else: # 내용이 다르다면 갱신할 파일
+                renew.append(fpath) 
 
         # 복사할 파일을 추출함 (A - S)
-        temp = org_set - same_set
-        for fname in temp:
-            fpath = os.path.join(folder1, fname)
-            cut = cut_path(fpath, path1_depth)
-            result_copy.append(cut)
+        for fname in (org_files - common_names):
+            fpath = os.path.join(rel_path, fname)
+            copy.append(fpath) # 상대 경로로 저장
 
         # 삭제할 파일을 추출함 (B - S)
-        temp = tar_set - same_set
-        for fname in temp:
-            fpath = os.path.join(folder2, fname)
-            cut = cut_path(fpath, path2_depth)
-            result_rmv.append(cut)
-
-    return result_copy, result_renew, result_rmv, result_same
-
-
-
-def get_intersection_result(dlist_1: DepthList, 
-                dlist_2: DepthList,
-                dlist_intersect: DepthList) -> CMP_STATS:
-    # 트리 비교
-    folders = dlist_intersect.count()
-
-    if is_dlist_equal(dlist_1, dlist_2, dlist_intersect):
-        return CMP_STATS.SAME
-    elif folders == 1:
-        return CMP_STATS.NOTSAME
-    else:
-        return CMP_STATS.PARTIAL
+        for fname in (tar_files - common_names):
+            fpath = os.path.join(rel_path, fname)
+            rmv.append(fpath) # 상대 경로로 저장
     
+    result = CompareResult()
+    result.files_copy = copy
+    result.files_renew = renew
+    result.files_rmv = rmv 
+    result.files_same = same
+    return result
+
+
+def compare_dirs(org_path, tar_path):
+
+    """
+    두 폴더를 비교하여 다음 결과를 반환한다.
+    1. 복사할 폴더(상대경로)
+    2. 삭제할 폴더(상대경로)
+    3. 공통의 폴더(상대경로)
+    
+    폴더 안의 내용물은 고려하지 않으며, 폴더 비교 결과만 반환한다.
+    결과물에는 파일은 하나도 없어야 한다. 
+    
+    dir_1과 dir_2는 비교하고자 하는 폴더의 절대경로(문자열)이다.
+    """
+    # sametree = DepthList()  # 리턴값
+    # sametree[0].add("")  # 현재 폴더 추가
+
+    # 리턴값 3개
+    copy = []
+    rmv = []
+    same = [""] # 루트 폴더를 의미하는 공백 경로를 넣었다.
+                # '.'이 아니라 공백인 이유는, same에 들어갈 경로들이 모두 상대 경로이기 때문이다.
+
+    next_scan = [""] # 검사해야할 폴더이며, 루트 폴더를 의미하는 ""를 추가하였음
+    while len(next_scan) > 0:  # 같은 폴더 산출
+        folder = next_scan.pop(0) # 상대경로
+        path1 = os.path.join(org_path, folder) # 절대경로 
+        path2 = os.path.join(tar_path, folder) # 절대경로
+
+        a = get_dirname_set(path1)
+        b = get_dirname_set(path2)
+        s = a & b
+
+        # 복사할 폴더 a - s
+        for i in (a - s):
+            p = os.path.join(folder, i)
+            copy.append(p)
+
+        # 삭제할 폴더 b - s
+        for i in (b - s):
+            p = os.path.join(folder, i)
+            rmv.append(p)
+
+        # 공통의 폴더 s 
+        for i in s:
+            p = os.path.join(folder, i)
+            same.append(p)
+            next_scan.append(p) # 다음 검사할 항목으로 추진
+
+    result = CompareResult()
+    result.dirs_copy = copy
+    result.dirs_rmv = rmv 
+    result.dirs_same = same
+    return result
+
+
+
+
+### 쓸모없는 쓰레기
+
+# def load_folder(path, compare_mode):
+#     # 트리, 폴더수, 파일수   
+#     if compare_mode == CMP_MODES.ALL:
+#         dlist, folders, files = get_path_info(path) 
+#     elif compare_mode == CMP_MODES.TOP_ONLY:
+#         dlist = DepthList()
+#         dlist.add("")
+#         folders = 0
+#         files = get_root_files_count(path)
+    
+#     # 크기
+#     if compare_mode == CMP_MODES.ALL:
+#         size = get_dir_size(path)
+#     elif compare_mode == CMP_MODES.TOP_ONLY:
+#         size = get_root_size(path)
+
+#     return dlist, folders, files, size
+
+
+
+# def get_state_message(state) -> str:
+#     if state == CMP_STATS.SAME:
+#         msg = "완전 일치"
+#     elif state == CMP_STATS.NOTSAME:
+#         msg = "불일치"
+#     elif state == CMP_STATS.PARTIAL:
+#         msg = "부분 일치"
+#     elif state == CMP_STATS.ROOT:
+#         msg = "단일 폴더"
+#     else:
+#         msg = "CMP_STATS 오류"
+        
+#     return "폴더 구조 : " + msg
+
+
 
 # def get_state(tree_same: DepthList):
 #     """
@@ -123,20 +207,17 @@ def get_intersection_result(dlist_1: DepthList,
 #         tree_same
 #         )
 #     return state
-    
-
-def get_state_message(state) -> str:
-    if state == CMP_STATS.SAME:
-        msg = "완전 일치"
-    elif state == CMP_STATS.NOTSAME:
-        msg = "불일치"
-    elif state == CMP_STATS.PARTIAL:
-        msg = "부분 일치"
-    elif state == CMP_STATS.ROOT:
-        msg = "단일 폴더"
-    else:
-        msg = "CMP_STATS 오류"
-        
-    return "폴더 구조 : " + msg
 
 
+# def get_intersection_result(dlist_1: DepthList, 
+#                 dlist_2: DepthList,
+#                 dlist_intersect: DepthList) -> CMP_STATS:
+#     # 트리 비교
+#     folders = dlist_intersect.count()
+
+#     if is_dlist_equal(dlist_1, dlist_2, dlist_intersect):
+#         return CMP_STATS.SAME
+#     elif folders == 1:
+#         return CMP_STATS.NOTSAME
+#     else:
+#         return CMP_STATS.PARTIAL

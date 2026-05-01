@@ -138,7 +138,8 @@ class DepthList:
         check_length(new, self, depth_list)
         
         for i in range(MAX_DEPTH):
-            new[i] = self[i] & depth_list[i]
+            new[i].clear()
+            new[i].update(self[i] & depth_list[i])
         return new 
     
     
@@ -150,7 +151,8 @@ class DepthList:
         check_length(new, self, depth_list)
         
         for i in range(MAX_DEPTH):
-            new[i] = self[i] - depth_list[i]
+            new[i].clear()
+            new[i].update(self[i] - depth_list[i])
         return new 
     
 
@@ -193,8 +195,7 @@ def is_dlist_equal(dlist_1, dlist_2, dlist_intersect):
 
 """
 사용하지 않는 함수(deprecated)
-어차피 양쪽 폴더의 집합을 모두 구해야 하며,
-교집합도 손쉽게 구할수 있으므로 이 함수를 쓸 이유가 없다.
+이 함수는 compare.compare_dirs로 업그레이드 되었다.
 
 def _deprecated_get_samedir_tree(org_path, tar_path):
     
