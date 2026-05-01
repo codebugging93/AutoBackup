@@ -17,6 +17,9 @@ class CompareResult:
     """
 
     def __init__(self):
+        self.org_path = ""
+        self.tar_path = ""
+
         self.dirs_copy = [] 
         self.dirs_rmv = []
         self.dirs_same = []
@@ -91,6 +94,8 @@ def compare_files(org_path, tar_path, dirs_same: list):
             rmv.append(fpath) # 상대 경로로 저장
     
     result = CompareResult()
+    result.org_path = org_path
+    result.tar_path = tar_path
     result.files_copy = copy
     result.files_renew = renew
     result.files_rmv = rmv 
@@ -147,6 +152,8 @@ def compare_dirs(org_path, tar_path):
             next_scan.append(p) # 다음 검사할 항목으로 추진
 
     result = CompareResult()
+    result.org_path = org_path
+    result.tar_path = tar_path
     result.dirs_copy = copy
     result.dirs_rmv = rmv 
     result.dirs_same = same
