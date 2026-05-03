@@ -35,35 +35,31 @@ class Trashbin:
 
     그렇게 정해진 이름을 remove_path라고 한다.
     """
+    remove_path = ""
 
-    app_trashbin_path = _get_download_path(folder_name=APPNAME + "_휴지통")
-    remove_path = "" 
-
-    def make_trashbin(self, folder_name="%Y-%m-%d %H시%M분%S초 백업본") -> str:
+    @classmethod
+    def make_trashbin(
+        cls, 
+        path,
+        trashbin_name=APPNAME + "_휴지통",
+        folder_name="%Y-%m-%d %H시%M분%S초 백업본"):
         """
         날짜를 이름으로 한 폴더 생성.
         Trashbin.remove_path가 갱신된다.
-        
         """
-        # 휴지통 생성
-        if not os.path.isdir(self.app_trashbin_path):
-            os.mkdir(self.app_trashbin_path)
-
         # 날짜 불러오고 폴더 이름 설정
         name = datetime.now().strftime(folder_name)
-        name = add_dir_num(name, self.app_trashbin_path) # 혹시나 있을 중복 방지
-
-        # remove_path 재정의
-        p = os.path.join(self.app_trashbin_path, name)
-        os.mkdir(p)
-
-        # 값 갱신
-        self.remove_path = p
-        return p
+        p = os.path.join(path, trashbin_name, name)
+        p = add_dir_num(p, os.path.dirname(p)) # 혹시나 있을 중복 방지
+        os.makedirs(p, exist_ok=True)
+        cls.remove_path = p
 
 
-    def get_remove_path(self):
-        return self.remove_path
+    @classmethod
+    def get_remove_path(cls):
+        if cls.remove_path == "":
+            raise Exception("먼저 make_trashbin을 실행하세요.")
+        return cls.remove_path
 
 
 

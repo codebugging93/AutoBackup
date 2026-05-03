@@ -177,6 +177,40 @@ def get_relpath_dlist(path) -> DepthList:
     return dlist
 
 
+def get_files_relpath(path) -> list:
+    """
+    path에 속한 모든 파일들의 상대경로를 리스트로 반환한다.
+    depth는 오름차순이다.
+    """
+    path = os.path.normpath(path)
+    path_depth = get_depth(path)
+    result = []
+
+    for root, dirs, files in os.walk(path):
+        for i in files:
+            file_path = os.path.join(root, i)
+            cut = cut_path(file_path, path_depth) 
+            result.append(cut) 
+
+    return result
+
+
+def get_dirs_relpath(path) -> list:
+    """
+    path에 속한 모든 폴더들의 상대경로를 리스트로 반환한다.
+    depth는 오름차순이다.
+    """
+    path = os.path.normpath(path)
+    path_depth = get_depth(path)
+    result = []
+
+    for root, dirs, files in os.walk(path):
+        cut = cut_path(root, path_depth) 
+        result.append(cut) 
+
+    return result
+
+
 def get_dir_size(path) -> int:
     """ 
     폴더 path의 용량 측정 

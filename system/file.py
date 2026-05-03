@@ -31,9 +31,15 @@ def move_file(src, dst, mkdirs=True, metadata=True):
     copy_file(src, dst)로 파일을 복사하고
     src 파일을 os.remove로 삭제한다.
     """
+    try: # 같은 드라이브 내에서는 이게 더욱 빠름
+        _dir = os.path.dirname(dst)
+        os.makedirs(_dir, exist_ok=mkdirs)
+        os.rename(src, dst)
+    except OSError:
+        copy_file(src, dst, mkdirs=mkdirs, metadata=metadata)
+        os.remove(src)
 
-    copy_file(src, dst, mkdirs=mkdirs, metadata=metadata)
-    os.remove(src)
 
-
-
+def move_folder(src, dst):
+    """ 나중에 Trashbin 사용자 선택 기능을 넣을 때 세부 구현. """
+    shutil.move(src, dst)
