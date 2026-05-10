@@ -1,6 +1,9 @@
 import shutil
 import os
 
+from system.DepthList import get_depth
+from system.path import cut_path, merge_path
+
 
 def copy_file(src, dst, mkdirs=True, metadata=True):
     """
@@ -38,6 +41,27 @@ def move_file(src, dst, mkdirs=True, metadata=True):
     except OSError:
         copy_file(src, dst, mkdirs=mkdirs, metadata=metadata)
         os.remove(src)
+
+
+def copy_dir(src, dst, metadata=True):
+    """
+    src 폴더를 dst로 통째로, 재귀적으로 복사한다.
+    src, dst는 절대경로이다.
+    """
+
+    # os.walk를 이용해서 각 root마다 files를 복사해야함
+    src_depth = get_depth(src)
+    for src_dir, dirs, files in os.walk(src):
+        cut = cut_path(src_dir, src_depth) 
+        dst_dir = merge_path(dst, cut) # 복사 목적지 경로
+        # src의 내부 폴더 src_dir을 dst의 내부 폴더 dst_dir로 복사함
+
+        os.makedirs(dst_dir, exist_ok=True) # 폴더 생성
+        for name in files:
+            src_file = merge_path(src_dir, name)
+            dst_file = merge_path(dst_dir, name)
+            copy_file(src_file, dst_file, metadata=metadata)
+
 
 
 def move_folder(src, dst):
