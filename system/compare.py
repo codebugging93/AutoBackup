@@ -1,19 +1,27 @@
 import os
 
+from system.byte import convert_byte
 from system.filecmp_modified import auto_set_filter, cmp_filter
 from system.path import get_dirname_set, get_filename_set, merge_path
 
 
 class CompareResult:
     """
-    dirs_copy: 복사할 폴더가 포함된 상대경로 리스트
-    dirs_rmv: 삭제할 폴더가 포함된 상대경로 리스트
+    dirs_copy: 복사할 폴더가 포함된 절대경로 리스트
+    dirs_rmv: 삭제할 폴더가 포함된 절대경로 리스트
     dirs_same: 공통된 디렉토리가 포함된 상대경로 리스트
 
     dirs_copy와 dirs_rmv에 들어있는 디렉토리는 서브디렉토리를 포함한 폴더이며,
-    dirs_same는 서브디렉토리를 모두 따로따로 저장하여 길이가 길다.
+    dirs_same은 서브디렉토리를 모두 따로따로 저장하여 길이가 길다.
 
-    files_copy, files_rmv, files_renew, files_same은 모두 상대 경로이다.
+    files_copy: 복사할 파일이 포함된 절대경로 리스트
+    files_rmv: 삭제할 파일이 포함된 절대경로 리스트
+    files_renew: 갱신할 파일이 포함된 상대경로 리스트
+    files_same: 동일한 파일이 포함된 상대경로 리스트
+
+    상대경로/절대경로의 기준
+        원본 폴더와 대상 폴더중 한쪽에만 들어있는 요소(복사/삭제)는 절대경로
+        양쪽에 들어있는 요소(갱신/동일)의 경우에는 상대경로
     """
 
     def __init__(self):
@@ -30,11 +38,32 @@ class CompareResult:
         self.files_same = []
 
 
+    def print(self):
+        print("원본 폴더: ", self.org_path)
+        print("대상 폴더: ", self.tar_path)
 
-def compare(org_path, tar_path):
+        print("복사할 폴더 수:", len(self.dirs_copy))
+        print("삭제할 폴더 수:", len(self.dirs_rmv))
+        print("동일한 폴더 수:", len(self.dirs_same))
+        
+        print("복사할 파일 수:", len(self.files_copy))
+        print("삭제할 파일 수:", len(self.files_rmv))
+        print("갱신할 파일 수:", len(self.files_renew))
+        print("동일한 파일 수:", len(self.files_same))
+
+
+
+def compare(org_path, tar_path, fast_scan=True):
+    auto_set_filter(tar_path) # 검사 속도 향상
+
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
     result = compare_dirs(org_path, tar_path)
-    result_files = compare_files(org_path, tar_path, result.dirs_same)
+    result_files = compare_files(
+        org_path, 
+        tar_path, 
+        result.dirs_same, 
+        fast_scan=fast_scan
+        )
 
     result.files_copy = result_files.files_copy
     result.files_rmv = result_files.files_rmv
@@ -44,7 +73,7 @@ def compare(org_path, tar_path):
     return result
 
 
-def compare_files(org_path, tar_path, dirs_same: list):
+def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
     """ 
     org_path가 백업하고자 하는 원본 폴더(original),
     tar_path가 덮어씌우고자 하는 사본 폴더(target) 경로이다.
@@ -56,8 +85,6 @@ def compare_files(org_path, tar_path, dirs_same: list):
     복사/갱신/삭제/공통 파일 리스트를 반환한다.
     """
     copy, renew, rmv, same = [], [], [], []
-
-    auto_set_filter(tar_path) # 검사 속도 향상
 
     # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
     for rel_path in dirs_same: # rel_path: 상대경로
@@ -77,21 +104,21 @@ def compare_files(org_path, tar_path, dirs_same: list):
             file2 = os.path.join(tar_dir, fname)
 
             # 비교
-            fpath = os.path.join(rel_path, file1) # 상대 경로로 저장
-            if cmp_filter(file1, file2): # 내용이 동일하면 같은 파일
+            fpath = os.path.join(rel_path, fname) # 상대 경로로 저장
+            if cmp_filter(file1, file2, fast_scan): # 내용이 동일하면 같은 파일
                 same.append(fpath) 
             else: # 내용이 다르다면 갱신할 파일
                 renew.append(fpath) 
 
         # 복사할 파일을 추출함 (A - S)
         for fname in (org_files - common_names):
-            fpath = os.path.join(rel_path, fname)
-            copy.append(fpath) # 상대 경로로 저장
+            fpath = os.path.join(org_dir, fname) # 복사할 파일은 원본에 존재함 
+            copy.append(fpath) # 절대 경로로 저장
 
         # 삭제할 파일을 추출함 (B - S)
         for fname in (tar_files - common_names):
-            fpath = os.path.join(rel_path, fname)
-            rmv.append(fpath) # 상대 경로로 저장
+            fpath = os.path.join(tar_dir, fname) # 삭제할 파일은 타겟에 존재함
+            rmv.append(fpath) # 절대 경로로 저장
     
     result = CompareResult()
     result.org_path = org_path
@@ -107,8 +134,8 @@ def compare_dirs(org_path, tar_path):
 
     """
     두 폴더를 비교하여 다음 결과를 반환한다.
-    1. 복사할 폴더(상대경로)
-    2. 삭제할 폴더(상대경로)
+    1. 복사할 폴더(절대경로)
+    2. 삭제할 폴더(절대경로)
     3. 공통의 폴더(상대경로)
     
     폴더 안의 내용물은 고려하지 않으며, 폴더 비교 결과만 반환한다.
@@ -135,20 +162,20 @@ def compare_dirs(org_path, tar_path):
         b = get_dirname_set(path2)
         s = a & b
 
-        # 복사할 폴더 a - s
+        # 복사할 폴더 a - s 
         for i in (a - s):
-            p = os.path.join(folder, i)
-            copy.append(p)
+            p = os.path.join(path1, i) # 복사할것은 org쪽 저장장치에 있음
+            copy.append(p) # 절대경로 
 
         # 삭제할 폴더 b - s
         for i in (b - s):
-            p = os.path.join(folder, i)
-            rmv.append(p)
+            p = os.path.join(path2, i) # 삭제할것은 tar쪽 저장장치에 있음
+            rmv.append(p) # 절대경로 
 
         # 공통의 폴더 s 
         for i in s:
             p = os.path.join(folder, i)
-            same.append(p)
+            same.append(p) # 상대경로
             next_scan.append(p) # 다음 검사할 항목으로 추진
 
     result = CompareResult()
