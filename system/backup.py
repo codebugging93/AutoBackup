@@ -14,19 +14,26 @@ def backup(compare_result: CompareResult):
     root = compare_result.tar_path
     Trashbin.make_trashbin(Path(root).anchor) # 같은 드라이브 폴더에 휴지통을 만듦
 
+    # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
+    remove_files(
+        compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
+        compare_result.files_rmv)
+    
     copy_files(
         compare_result.org_path, 
         compare_result.tar_path,
         compare_result.files_copy)
     
-    remove_files(
-        compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
-        compare_result.files_rmv)
-    
     renew_files(
         compare_result.org_path, 
         compare_result.tar_path,
         compare_result.files_renew
+    )
+
+    # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
+    remove_dirs( 
+        compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
+        compare_result.dirs_rmv
     )
 
     copy_dirs(
@@ -35,10 +42,7 @@ def backup(compare_result: CompareResult):
         compare_result.dirs_copy
     )
 
-    remove_dirs( 
-        compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
-        compare_result.dirs_rmv
-    )
+
 
 
 
