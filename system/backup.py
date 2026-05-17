@@ -68,20 +68,16 @@ def copy_files(org_path, tar_path, files: list | set):
 
 def renew_files(org_path, tar_path, files: list):
     """ 
-    org_path와 tar_path에 동시에 존재하는 상대경로 리스트 files의 파일들을
-    org_path -> tar_path 방향으로 덮어씌운다.
-    갱신되기 전의 파일은 휴지통에 보관한다.
+    tar_path에 존재하는 절대경로 리스트 files의 파일들을 삭제하고,
+    org_path에 존재하는 파일들을 복사한다.
     """
-    # # 이전 파일 보관 중
-    for rel_path in files:
-        src = merge_path(tar_path, rel_path)
-        dst = os.path.join(Trashbin.get_remove_path(), rel_path)
-        move_file(src, dst)
+    # 이전 파일 보관 중
+    remove_files(tar_path, files)
     
     # 새로운 파일 복사 중 
-    for rel_path in files:
-        src = merge_path(org_path, rel_path)
-        dst = merge_path(tar_path, rel_path)
+    for dst in files:
+        cut = cut_path(dst, get_depth(tar_path))
+        src = os.path.join(org_path, cut)
         copy_file(src, dst)
 
 

@@ -16,12 +16,8 @@ class CompareResult:
 
     files_copy: 복사할 파일이 포함된 절대경로 리스트
     files_rmv: 삭제할 파일이 포함된 절대경로 리스트
-    files_renew: 갱신할 파일이 포함된 상대경로 리스트
+    files_renew: 갱신할 파일이 포함된 절대경로 리스트
     files_same: 동일한 파일이 포함된 상대경로 리스트
-
-    상대경로/절대경로의 기준
-        원본 폴더와 대상 폴더중 한쪽에만 들어있는 요소(복사/삭제)는 절대경로
-        양쪽에 들어있는 요소(갱신/동일)의 경우에는 상대경로
     """
 
     def __init__(self):
@@ -104,11 +100,11 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
             file2 = os.path.join(tar_dir, fname)
 
             # 비교
-            fpath = os.path.join(rel_path, fname) # 상대 경로로 저장
             if cmp_filter(file1, file2, fast_scan): # 내용이 동일하면 같은 파일
-                same.append(fpath) 
+                fpath = os.path.join(rel_path, fname) 
+                same.append(fpath) # 상대 경로로 저장
             else: # 내용이 다르다면 갱신할 파일
-                renew.append(fpath) 
+                renew.append(file2) # 갱신될 파일의 절대 경로로 저장
 
         # 복사할 파일을 추출함 (A - S)
         for fname in (org_files - common_names):
