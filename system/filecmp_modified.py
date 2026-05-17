@@ -165,7 +165,7 @@ def auto_set_filter(target_dir):
     name = add_file_num(name, target_dir) # 중복 체크
     path = os.path.join(target_dir, name)
 
-    with open(path, "w", encoding="utf8"):
+    with open(path, "w", encoding="utf8"): # target_dir이 존재하지 않으면 오류를 발생시킴
         pass
 
     test_time = 1772990348.1234567 # float는 소수점 7자리까지만
