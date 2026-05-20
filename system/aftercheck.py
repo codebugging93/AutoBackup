@@ -1,203 +1,173 @@
-from filecmp import cmp
 import os
 
-from system.filecmp_modified import cmp_filter, auto_set_filter
-from system.DepthList import DepthList
-from system.path import get_filename_set
+from system.compare import CompareResult, compare
+from system.DepthList import get_depth
+from system.path import cut_path
+from system.filecmp_modified import cmp_filter
 
 
-
-"""
-이 모듈에서는 확장성을 위해 backup_data, aftercheck_data를 직접 참조하지 않았다.
-"""
-
-
-
-
-
-def aftercheck_file_copy(set_file_copy):
+def aftercheck(compare_result: CompareResult, fast_scan=True):
+    """ 
+    CompareResult의 각 항목이 제대로 작업되었는지 확인한다.
+    
+    dirs_copy: 존재하지 않으면 failed.dirs_copy에 넣고,
+        존재한다면 compare한 결과를 받은 후에, 모두 failed에 넣는다.(절대경로이므로)
+    dirs_rmv: 삭제되지 않고 존재한다면 failed.dirs_rmv에 넣는다.
+    files_copy: 존재하지 않으면 failed.files_copy에 넣고, 
+        존재하는데 다르면 failed.files_renew에 넣는다. 
+    files_rmv: 존재한다면 failed.files_rmv에 넣는다.
+    files_renew: files_copy와 동일하게 처리한다.
     """
-    파일 복사 확인 : file_copy의 원소가 target의 것과 일치하는지 확인
+    # 결과를 모으기 위한 지역 변수 리스트들
+    files_rmv = []
+    dirs_rmv = []
+    files_copy = []
+    files_renew = []
+    dirs_copy = []
 
-    복사 실패 유형
-    1. 파일 복사가 안 되었음
-    2. 파일이 복사가 되었으나 손상된 형태
+    # 1. 파일 삭제 확인
+    files_rmv.extend(aftercheck_files_rmv(compare_result.files_rmv))
+
+    # 2. 폴더 삭제 확인
+    dirs_rmv.extend(aftercheck_dirs_rmv(compare_result.dirs_rmv))
+
+    # 3. 파일 복사 확인 
+    result = aftercheck_files_copy(
+        compare_result.org_path, compare_result.tar_path, 
+        compare_result.files_copy, fast_scan
+    )
+    files_copy.extend(result.files_copy)
+    files_renew.extend(result.files_renew)
+
+    # 4. 파일 갱신 확인
+    result = aftercheck_files_renew(
+        compare_result.org_path, compare_result.tar_path, 
+        compare_result.files_renew, fast_scan
+    )
+    files_copy.extend(result.files_copy)
+    files_renew.extend(result.files_renew)
+
+    # 5. 폴더 복사 확인 (재귀적으로 내부 파일 및 폴더 검사 결과 병합)
+    result = aftercheck_dirs_copy(
+        compare_result.org_path, compare_result.tar_path, 
+        compare_result.dirs_copy, fast_scan
+    )
+    dirs_copy.extend(result.dirs_copy)
+    dirs_rmv.extend(result.dirs_rmv)
+    files_copy.extend(result.files_copy)
+    files_rmv.extend(result.files_rmv)
+    files_renew.extend(result.files_renew)
+
+    # 최종적으로 리스트 대입
+    failed_result = CompareResult()
+    failed_result.org_path = compare_result.org_path
+    failed_result.tar_path = compare_result.tar_path
+    failed_result.files_rmv = files_rmv
+    failed_result.dirs_rmv = dirs_rmv
+    failed_result.files_copy = files_copy
+    failed_result.files_renew = files_renew
+    failed_result.dirs_copy = dirs_copy
+
+    return failed_result
+
+
+def aftercheck_files_rmv(files: list):
+    """ 
+    절대경로 리스트 files의 파일들이 
+    제대로 삭제되었는지 확인한다.
     """
+    failed_files = []
 
-    # 초기설정
-    if configs.isexFAT:
-        compare_file = cmp_filter
-    else:
-        compare_file = cmp
-    copy, renew = set(), set()
+    for src in files:
+        if os.path.exists(src): # 삭제한줄 알았던 파일이 존재하고,
+            # exists만으로는 대소문자까지 일치하는지 확인할 수 없다.
+            if os.path.basename(src) == os.path.basename(os.path.realpath(src)): # 대소문자까지 비교하여 완전 동일한 파일이면 
+                failed_files.append(src) # 실패한 파일로 넣음
 
-    # 재검사
-    for cut in set_file_copy:
-        org = os.path.join(original.path, cut)
-        tar = os.path.join(target.path, cut)
-
-        if os.path.exists(tar):
-            if not compare_file(org, tar):
-                renew.add(cut)
-        else: # 존재하지 않는 경우
-            copy.add(cut)
-
-        main_prog.num += 1
-
-    return copy, renew
+    return failed_files
 
 
-def aftercheck_file_rmv(set_file_rmv):
-    """ 파일 삭제 확인 : file_rmv의 원소가 target에 존재하지 않는지 확인   
-    원본 파일이 대상 폴더에 존재하면 실패한 것으로 처리한다.
+def aftercheck_files_copy(org_path, tar_path, files: list, fast_scan=True):
+    """ 
+    org_path 내의 절대경로 리스트 files의 파일들이 
+    tar_path로 제대로 복사되었는지 compare해본다.
+    """
+    failed = CompareResult()
+
+    for src in files:
+        cut = cut_path(src, get_depth(org_path))
+        dst = os.path.join(tar_path, cut)
+
+        try: 
+            if not cmp_filter(src, dst, fast_scan):
+                # 파일이 있는데 일치하지 않을 때는 갱신해야함
+                failed.files_renew.append(dst)
+        except FileNotFoundError:
+            # 파일이 없을 때는 복사해야함 
+            failed.files_copy.append(src)
+
+    return failed
 
 
-    #1 대소문자 버그
-        folder.py를 삭제하고 Folder.py란 파일을 복사했다고 치자.
-        그러면 folder.py가 삭제되었는지 확인할 것이고, 
-        윈도우는 대소문자를 구분하지 않기 때문에 
-        대상 폴더에 Folder.py가 존재함에 따라 folder.py가 삭제되지 않았다고 오판하게 된다.
-        이처럼 파일의 소문자명은 같으나 대소문자가 달라진 경우에 문제가 생긴다. 
+def aftercheck_files_renew(org_path, tar_path, files: list, fast_scan=True):
+    """ 
+    tar_path 내의 절대경로 리스트 files의 파일들이 
+    org_path로부터 제대로 갱신되었는지 compare해본다.
+    """
+    failed = CompareResult()
+
+    for dst in files:
+        cut = cut_path(dst, get_depth(tar_path))
+        src = os.path.join(org_path, cut)
+
+        try: 
+            if not cmp_filter(src, dst, fast_scan):
+                # 파일이 있는데 일치하지 않을 때는 갱신해야함
+                failed.files_renew.append(dst)
+        except FileNotFoundError:
+            # 파일이 없을 때는 복사해야함 
+            failed.files_copy.append(src)
+
+    return failed
+
+
+def aftercheck_dirs_rmv(dirs: list):
+    """ 
+    절대경로 리스트 dirs의 폴더들이 
+    제대로 삭제되었는지 확인한다.
+    """
+    failed_dirs = [] 
+
+    for src in dirs:
+        if os.path.exists(src): # 삭제한줄 알았던 폴더가 존재하고,
+            # exists만으로는 대소문자까지 일치하는지 확인할 수 없다.
+            if os.path.basename(src) == os.path.basename(os.path.realpath(src)): # 대소문자까지 비교하여 완전 동일한 폴더이면
+                failed_dirs.append(src) # 실패한 폴더로 넣음
+
+    return failed_dirs
+
+
+def aftercheck_dirs_copy(org_path, tar_path, dirs: list, fast_scan=True) -> CompareResult:
+    """ 
+    org_path 내의 절대경로 리스트 dirs의 폴더들이 
+    tar_path로 제대로 복사되었는지 compare해본다.
+    """
+    failed_result = CompareResult()
+    
+    for src in dirs:
+        cut = cut_path(src, get_depth(org_path))
+        dst = os.path.join(tar_path, cut)
         
-        그래서 "삭제 검사"를 할 때만 대소문자가 다르면 다른 파일로 간주하기로 했다.
-
-
-
-        
-    """
-
-    rmv = set()
-
-    # 재검사
-    for cut in set_file_rmv:
-        p = os.path.normpath(os.path.join(target.path, cut)) # 삭제를 시도했던 파일
-
-        # 존재하지 않으면 잘 삭제된 것임
-        if not os.path.exists(p):
+        if not os.path.exists(dst):
+            failed_result.dirs_copy.append(src)
             continue
 
-        # 존재하지만, 대소문자 구성이 다르므로 다른 파일로 간주함 
-        if p != os.path.realpath(p): # realpath는 실제 파일의 경로를 제공함(대소문자까지 일치하는)
-            continue 
+        # 다양한 결과가 나오게 됨
+        _result = compare(src, dst, fast_scan=fast_scan)
+        failed_result.dirs_copy.extend(_result.dirs_copy)
+        failed_result.dirs_rmv.extend(_result.dirs_rmv)
+        failed_result.files_copy.extend(_result.files_copy)
+        failed_result.files_rmv.extend(_result.files_rmv)
+        failed_result.files_renew.extend(_result.files_renew)
 
-        # 존재하며, 대소문자 구성도 같은 경우 삭제에 실패한 것으로 취급
-        rmv.add(cut) 
-        main_prog.num += 1
-
-    return rmv
-
-
-def aftercheck_file_renew(set_file_renew):
-    """ 
-    파일 갱신 확인 : file_renew의 원소가 original과 target의 위치에서 일치하는지 확인 
-    
-    갱신 실패 유형
-    1. 파일 없음  2. 파일 다름
-    """
-
-    # 초기설정
-    if configs.isexFAT:
-        compare_file = cmp_filter
-    else:
-        compare_file = cmp
-    copy, renew = set(), set()
-
-    # 재검사
-    for cut in set_file_renew:
-        org = os.path.join(original.path, cut)
-        tar = os.path.join(target.path, cut)
-
-        if os.path.exists(tar):
-            if not compare_file(org, tar):
-                renew.add(cut)
-        else:  # 존재하지 않는 경우
-            copy.add(cut)
-
-        main_prog.num += 1
-
-    return copy, renew
-    
-
-def aftercheck_tree_copy(tree_copy):
-    """
-    폴더 복사 확인; 폴더들이 제대로 복사가 되었는지 확인해야 한다. 즉 폴더 비교 작업은 필수불가결
-    1. tree_copy의 원소가 target에 존재하는지 확인
-        존재하지 않으면 FAILED_DIRS로 보냄
-    2. tree_copy에서 FAILED_DIRS를 제외한 집합을 data.file_same으로 잡고, 복사/삭제해야할 파일을 다시 구함(compare 사용)
-        결과물은 FAILED_FILES_COPY, FAILED_FILES_RMV로 보냄
-    """
-
-    # 초기설정
-    if configs.isexFAT:
-        compare_file = cmp_filter
-    else:
-        compare_file = cmp
-    failed_tree_copy = DepthList()
-    failed_files_copy = set()
-    failed_files_renew = set()
-
-    # 복사되지 않은 폴더 색출
-    for dirs in tree_copy:
-        for cut in dirs:
-            tar = os.path.join(target.path, cut)
-            if not os.path.exists(tar):
-                failed_tree_copy.attach(cut, 0)
-                
-            main_prog.num += 1
-
-    # 복사되지 않은 파일 색출
-    main_prog.config(prefix="[폴더 복사 확인]", num=0)
-    sub_prog.reset(prefix="[파일 복사 확인]")
-
-    for dirs in tree_copy:
-        for cut in dirs:
-            """
-            if failed_tree.exists(cut):
-                main_prog.num += 1
-                continue
-            여기에 이 코드를 넣을 필요가 없는게
-            어차피 존재하지 않는 폴더면 files가 빈 집합이 되므로 
-            failed_copy가 중복될 일이 전혀 없다.
-            """
-
-            org_dir = os.path.join(original.path, cut)
-            tar_dir = os.path.join(target.path, cut)
-            files = get_filename_set(org_dir)
-            sub_prog.config(num=0, total=len(files)) # sub_prog 수정
-
-            for f in files:
-                org_file = os.path.join(org_dir, f)
-                tar_file = os.path.join(tar_dir, f)
-                cut_file = os.path.join(cut, f)
-
-                if os.path.exists(tar_file):
-                    if not compare_file(org_file, tar_file):
-                        failed_files_renew.add(cut_file)
-                else:
-                    failed_files_copy.add(cut_file)
-
-                sub_prog.num += 1
-
-            main_prog.num += 1
-
-    return failed_files_copy, failed_files_renew, failed_tree_copy
-
-
-# 폴더 삭제 확인
-def aftercheck_tree_rmv(tree_rmv):
-    """
-    폴더 삭제 확인 : tree_rmv의 원소가 target에 존재하지 않는지 확인
-    """
-
-    failed_tree = DepthList()
-
-    # 복사되지 않은 폴더 색출
-    for dirs in tree_rmv:
-        for cut in dirs:
-            tar = os.path.join(target.path, cut)
-            if os.path.exists(tar):
-                failed_tree.attach(cut, 0)
-
-            main_prog.num += 1
-
-    return failed_tree
+    return failed_result
