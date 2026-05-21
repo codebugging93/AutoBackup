@@ -1,17 +1,4 @@
-"""
-appname = AutoBackup
-version = 1.4 WIP
-author = 츠붕이(TUYULovers_)
-
-Beta Tester
-wizminecraft(상어단)
-
-Special Thanks
-wizminecraft(상어단)
-"""
-
-import tkinter as tk
-from gui.widgets import root 
+from gui.Home_Layout import root 
 
 root.mainloop()
 
