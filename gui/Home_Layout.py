@@ -9,15 +9,15 @@ root.geometry("900x600+220+40") #가로1060, 세로 700 x값 220, y값 40
 #사용할 이미지 모음
 # 1. 원본 이미지 로드 (PIL Image)
 raw_Logo = Image.open(r"image\main_home.jpg")
-raw_origin_folder = Image.open(r"image\folder_origin (1).png")
-raw_backup_folder = Image.open(r"ㅑ히오스 사이즈 300 250.png")
+raw_original_folder = Image.open(r"image\folder_origin (1).png")
+raw_target_folder = Image.open(r"히오스 사이즈 300 250.png")
 raw_btn_home = Image.open(r"image\btn_home_new.jpg")
 raw_btn_search = Image.open(r"image\btn_search.png")
 
 # 2. 이미지 리사이즈 (PIL Image resized)
 res_Logo = raw_Logo.resize((900, 600), Image.LANCZOS)
-res_origin_folder = raw_origin_folder.resize((250, 250), Image.LANCZOS)
-res_backup_folder = raw_backup_folder.resize((250, 250), Image.LANCZOS)
+res_origin_folder = raw_original_folder.resize((250, 250), Image.LANCZOS)
+res_backup_folder = raw_target_folder.resize((250, 250), Image.LANCZOS)
 res_btn_home = raw_btn_home.resize((70, 70), Image.LANCZOS)
 res_btn_search = raw_btn_search.resize((70, 70), Image.LANCZOS)
 
@@ -29,11 +29,11 @@ tk_Img_btn_home = ImageTk.PhotoImage(res_btn_home)
 tk_Img_btn_search = ImageTk.PhotoImage(res_btn_search)
 
 #왼쪽바와 중앙 화면을 포함하는 프레임
-fram_top = Frame(root, bg="white")
-fram_top.pack(side = "top",fill="both", expand="true")
-fram_top.pack_propagate(0) 
+frame_top = Frame(root, bg="white")
+frame_top.pack(side = "top",fill="both", expand="true")
+frame_top.pack_propagate(0) 
 #왼쪽 기능 바
-fram_LeftBar = Frame(fram_top, relief="solid",  width="2c", bg="white")
+fram_LeftBar = Frame(frame_top, relief="solid",  width="2c", bg="white")
 fram_LeftBar.pack(side = "left",fill="both")
 fram_LeftBar.pack_propagate(0)
 label_step1 = Label(fram_LeftBar, image=tk_Img_btn_home)
@@ -51,7 +51,7 @@ label_step3.pack()
 #1번 홈 화면
 
 
-fram_center_first = Frame(fram_top, bg="black", relief="solid") #중앙 화면 프레임대신 레이블로 로고 넣기
+fram_center_first = Frame(frame_top, bg="black", relief="solid") #중앙 화면 프레임대신 레이블로 로고 넣기
 label_1 = Label(fram_center_first,image=tk_logo, bd="0")
 
 label_1.pack(expand=True)
@@ -62,7 +62,7 @@ fram_center_first.pack(fill="both", expand = True)
 #2번 폴더선택
 #원본폴더 선택
 
-fram_center_second = Frame(fram_top, relief="solid", bd="1", bg="white")
+fram_center_second = Frame(frame_top, relief="solid", bd="1", bg="white")
 
 
 fram_leftpart = Frame(fram_center_second, relief="solid", bd=1) 
@@ -94,7 +94,7 @@ btn_sel_backup.pack()
 
 #3번 검사선택
 
-fram_center_third = Frame(fram_top, relief="solid", bd="1")
+fram_center_third = Frame(frame_top, relief="solid", bd="1")
 
 #좌측 빠른검사 프레임
 fram_left = Frame(fram_center_third, relief="solid", bd="1")
@@ -126,7 +126,7 @@ btn_detail_sel = Button(fram_right, text="선택")
 btn_detail_sel.pack()
 
 #4번 프로그레스바
-fram_center_fourth = Frame(fram_top, relief="solid", bd="1")
+fram_center_fourth = Frame(frame_top, relief="solid", bd="1")
 
 fram_top_contain = Frame(fram_center_fourth, relief="solid")
 fram_top_contain.pack(fill="x",)
@@ -172,7 +172,7 @@ label_bottom_progress3.pack(side="top", anchor="w")
 #5번 검사결과표시
 
 #5번 메인프레임 
-fram_center_fifth = Frame(fram_top, relief="solid", bd="1")
+fram_center_fifth = Frame(frame_top, relief="solid", bd="1")
 #fram_center_fifth.pack(fill="both")
 
 
@@ -296,7 +296,7 @@ for i in range(50):
 # 백업확인알림창
 
 #6번 백업화면&프로그레스바
-fram_center_sixth = Frame(fram_top, relief="solid", bd="1")
+fram_center_sixth = Frame(frame_top, relief="solid", bd="1")
 
 fram_main_contain = Frame(fram_center_sixth, relief="solid")
 fram_main_contain.pack(fill="x",)
@@ -319,7 +319,7 @@ label_main_progress3.pack(side="top", anchor="w")
 
 #6-1 이후 바로 재검사 실시
 
-fram_center_sixth_first = Frame(fram_top, relief="solid", bd="1")
+fram_center_sixth_first = Frame(frame_top, relief="solid", bd="1")
 
 fram_second_main_contain = Frame(fram_center_sixth_first, relief="solid")
 fram_second_main_contain.pack(fill="x",)
@@ -346,7 +346,7 @@ label_main_second_progress3.pack(side="top", anchor="w")
 #6-2메인 프레임
 
 #8-1
-fram_center_eighth_first = Frame(fram_top, relief="solid", bd="1")
+fram_center_eighth_first = Frame(frame_top, relief="solid", bd="1")
 
 fram_second_top_contain = Frame(fram_center_eighth_first, relief="solid")
 fram_second_top_contain.pack(fill="x",)
@@ -363,7 +363,7 @@ top_second_progressbar.pack(fill="x", padx="5")
 label_second_top_progress3 = Label(fram_center_eighth_first, text = "이곳엔 파일의 경로를 표시")
 label_second_top_progress3.pack(side="top", anchor="w")
 
-fram_center_seventh = Frame(fram_top, relief="solid", bd="1")
+fram_center_seventh = Frame(frame_top, relief="solid", bd="1")
 
 #7번 탑 프레임(삭제,복사,갱신 버튼)
 fram_third_top_result = Frame(fram_center_seventh, relief="solid", bd="1")
