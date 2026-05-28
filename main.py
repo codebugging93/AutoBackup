@@ -1,4 +1,4 @@
-from gui.Home_Layout import root 
+from gui.functions import root 
 
 # UI 요소와 버튼 클릭 요소는 분리하여 진행함 
 # Home_Layout 파일을 components.py로 바꾸고
@@ -29,13 +29,6 @@ from gui.Home_Layout import root
 # 아까의 로직을 재활용하여 백업, 재검사, 최적화 진행도 표시함 
 # 모든 작업이 끝나면 백업 결과를 표시하고 처음 화면으로 돌아감
 
-
-UI팀 이승민씨는 일단 UI 파일이 동작할 수 있게 완성해주시고, 
-그 뒤에 components.py와 functions.py로 분리해주시는것을 부탁드립니다.
-
-SYS팀 박상현씨는 compare, backup, aftercheck의 각 함수에서 발생하는 값을 
-UI에 표시할 수 있도록, AppData와 비슷한 클래스인 SystemValues를 만들어서 
-저장할 수 있도록 합니다.
 
 
 root.mainloop()

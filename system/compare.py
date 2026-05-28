@@ -1,5 +1,7 @@
 import os
+from time import time
 
+from system.SystemValues import SystemValues
 from system.byte import convert_byte
 from system.filecmp_modified import auto_set_filter, cmp_filter
 from system.path import get_dirname_set, get_filename_set, merge_path
@@ -50,6 +52,8 @@ class CompareResult:
 
 
 def compare(org_path, tar_path, fast_scan=True):
+    SystemValues.compare_start_time = time()
+
     auto_set_filter(tar_path) # 검사 속도 향상
 
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
@@ -65,6 +69,8 @@ def compare(org_path, tar_path, fast_scan=True):
     result.files_rmv = result_files.files_rmv
     result.files_renew = result_files.files_renew
     result.files_same = result_files.files_same
+
+    SystemValues.compare_run_time = time() - SystemValues.compare_start_time
 
     return result
 
@@ -82,6 +88,18 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
     """
     copy, renew, rmv, same = [], [], [], []
 
+    # 작업할 파일의 개수를 세는 코드
+    SystemValues.compare_progress_max = 0
+    for rel_path in dirs_same: 
+        org_dir = merge_path(org_path, rel_path)
+        tar_dir = merge_path(tar_path, rel_path)
+        org_files = get_filename_set(org_dir)
+        tar_files = get_filename_set(tar_dir)
+        common_names = org_files & tar_files
+        SystemValues.compare_progress_max += len(common_names)
+    SystemValues.compare_progress_val = 0     
+    
+
     # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
     for rel_path in dirs_same: # rel_path: 상대경로
         # 원본과 사본에 동시에 존재하는 폴더의 절대경로
@@ -98,6 +116,8 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
             # 파일 경로
             file1 = os.path.join(org_dir, fname)
             file2 = os.path.join(tar_dir, fname)
+            SystemValues.compare_progress_path = os.path.join(rel_path, fname)
+        
 
             # 비교
             if cmp_filter(file1, file2, fast_scan): # 내용이 동일하면 같은 파일
@@ -105,6 +125,9 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
                 same.append(fpath) # 상대 경로로 저장
             else: # 내용이 다르다면 갱신할 파일
                 renew.append(file2) # 갱신될 파일의 절대 경로로 저장
+
+            SystemValues.compare_progress_val += 1 
+            #진행이 될떄 값이 1씩 추가됨
 
         # 복사할 파일을 추출함 (A - S)
         for fname in (org_files - common_names):

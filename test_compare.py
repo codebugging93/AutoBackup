@@ -19,7 +19,7 @@ while True:
 
     failed = aftercheck(result)
 
-    input()
+    input("백업 완료")
     
     backup(failed)
 

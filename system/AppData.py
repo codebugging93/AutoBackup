@@ -9,7 +9,7 @@ class CheckMode(Enum):
 class AppData:
     original_path = None
     target_path = None
-    check_mode = None
+    fast_scan = None
     compare_result: CompareResult | None = None
 
     
