@@ -1,5 +1,5 @@
 import os
-from time import time
+from time import sleep, time
 
 from system.SystemValues import SystemValues
 from system.byte import convert_byte
@@ -53,7 +53,12 @@ class CompareResult:
 
 def compare(org_path, tar_path, fast_scan=True):
     SystemValues.compare_start_time = time()
-
+    SystemValues.compare_progress_val = 0
+    SystemValues.compare_progress_max = 0
+    SystemValues.compare_progress_msg = ""
+    SystemValues.compare_progress_path = ""
+    SystemValues.compare_run_time = 0
+    
     auto_set_filter(tar_path) # 검사 속도 향상
 
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
@@ -71,6 +76,8 @@ def compare(org_path, tar_path, fast_scan=True):
     result.files_same = result_files.files_same
 
     SystemValues.compare_run_time = time() - SystemValues.compare_start_time
+
+    sleep(0.5)
 
     return result
 
@@ -97,7 +104,6 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
         tar_files = get_filename_set(tar_dir)
         common_names = org_files & tar_files
         SystemValues.compare_progress_max += len(common_names)
-    SystemValues.compare_progress_val = 0     
     
 
     # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.

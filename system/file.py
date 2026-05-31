@@ -2,6 +2,7 @@ import shutil
 import os
 
 from system.DepthList import get_depth
+from system.SystemValues import SystemValues
 from system.path import cut_path, merge_path
 
 
@@ -48,8 +49,14 @@ def copy_dir(src, dst, metadata=True):
     src 폴더를 dst로 통째로, 재귀적으로 복사한다.
     src, dst는 절대경로이다.
     """
+    SystemValues.copy_progress_max = 0
+    SystemValues.copy_progress_val = 0
+    SystemValues.copy_progress_path = ""
 
     # os.walk를 이용해서 각 root마다 files를 복사해야함
+    for _, _, files in os.walk(src):
+        SystemValues.copy_progress_max += len(files)
+
     src_depth = get_depth(src)
     for src_dir, dirs, files in os.walk(src):
         cut = cut_path(src_dir, src_depth) 
@@ -57,10 +64,13 @@ def copy_dir(src, dst, metadata=True):
         # src의 내부 폴더 src_dir을 dst의 내부 폴더 dst_dir로 복사함
 
         os.makedirs(dst_dir, exist_ok=True) # 폴더 생성
+
         for name in files:
             src_file = merge_path(src_dir, name)
             dst_file = merge_path(dst_dir, name)
+            SystemValues.copy_progress_path = src_file
             copy_file(src_file, dst_file, metadata=metadata)
+            SystemValues.copy_progress_val += 1
 
 
 
