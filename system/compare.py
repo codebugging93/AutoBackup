@@ -50,19 +50,29 @@ class CompareResult:
         print("동일한 파일 수:", len(self.files_same))
 
 
+    def is_empty(self):
+        return (
+            len(self.dirs_copy) +
+            len(self.dirs_rmv) +
+            len(self.dirs_same) +
+            len(self.files_copy) +
+            len(self.files_rmv) +
+            len(self.files_renew) +
+            len(self.files_same)
+        ) == 0
+    
+
+
 
 def compare(org_path, tar_path, fast_scan=True):
-    SystemValues.compare_start_time = time()
     SystemValues.compare_progress_val = 0
     SystemValues.compare_progress_max = 0
-    SystemValues.compare_progress_msg = ""
     SystemValues.compare_progress_path = ""
-    SystemValues.compare_run_time = 0
     
     auto_set_filter(tar_path) # 검사 속도 향상
 
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
-    result = compare_dirs(org_path, tar_path)
+    result = compare_dirs(org_path, tar_path) # TODO 이것도 SystemValues 반영하면 좋겠음
     result_files = compare_files(
         org_path, 
         tar_path, 
@@ -74,10 +84,6 @@ def compare(org_path, tar_path, fast_scan=True):
     result.files_rmv = result_files.files_rmv
     result.files_renew = result_files.files_renew
     result.files_same = result_files.files_same
-
-    SystemValues.compare_run_time = time() - SystemValues.compare_start_time
-
-    sleep(0.5)
 
     return result
 

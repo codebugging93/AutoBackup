@@ -13,30 +13,25 @@ from system.Trashbin import Trashbin
 
 
 def backup(compare_result: CompareResult):
-    SystemValues.backup_start_time = time()
     SystemValues.backup_progress_val = 0
     SystemValues.backup_progress_max = 0
+    SystemValues.backup_progress_msg = ""
     SystemValues.backup_progress_path = ""
     
     root = compare_result.tar_path
     Trashbin.make_trashbin(Path(root).anchor) # 같은 드라이브 폴더에 휴지통을 만듦
-
 
     # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
     SystemValues.backup_progress_msg = "파일 삭제 중"
     remove_files(
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.files_rmv)
-    if len(compare_result.files_rmv) != 0:
-        sleep(0.5)
     
     SystemValues.backup_progress_msg = "파일 복사 중"
     copy_files(
         compare_result.org_path, 
         compare_result.tar_path,
         compare_result.files_copy)
-    if len(compare_result.files_copy) != 0:
-        sleep(0.5)
     
     SystemValues.backup_progress_msg = "파일 갱신 중"
     renew_files(
@@ -44,8 +39,6 @@ def backup(compare_result: CompareResult):
         compare_result.tar_path,
         compare_result.files_renew
     )
-    if len(compare_result.files_renew) != 0:
-        sleep(0.5)
 
     # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
     SystemValues.backup_progress_msg = "폴더 삭제 중"
@@ -53,8 +46,6 @@ def backup(compare_result: CompareResult):
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.dirs_rmv
     )
-    if len(compare_result.dirs_rmv) != 0:
-        sleep(0.5)
 
     SystemValues.backup_progress_msg = "폴더 복사 중"
     SystemValues.copy_working = True 
@@ -64,10 +55,7 @@ def backup(compare_result: CompareResult):
         compare_result.dirs_copy
     )
     SystemValues.copy_working = False
-    if len(compare_result.dirs_copy) != 0:
-        sleep(0.5)
 
-    SystemValues.backup_run_time = time() - SystemValues.backup_start_time
 
 
 
@@ -95,7 +83,7 @@ def copy_files(org_path, tar_path, files: list | set):
     for src in files:
         cut = cut_path(src, get_depth(org_path))
         dst = os.path.join(tar_path, cut)
-        SystemValues.backup_progress_path = cut
+        SystemValues.backup_progress_path = src
         copy_file(src, dst)
         SystemValues.backup_progress_val += 1
 
@@ -158,17 +146,20 @@ def boost_files(org_path, tar_path, same_files: list | set):
 
     org_path의 파일의 수정된 시간을 tar_path쪽의 파일로 복사하는 작업이다.
     """
+    SystemValues.backup_progress_msg = "검사 속도 향상을 위한 최적화"
     SystemValues.backup_progress_val = 0  
     SystemValues.backup_progress_max = len(same_files)
     for rel_path in same_files:
+        SystemValues.backup_progress_path = rel_path
         file1 = merge_path(org_path, rel_path)
         file2 = merge_path(tar_path, rel_path)
 
-        # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
-        # -> 다음에 검사할때 검사 시간이 단축됨
-        st_mtime = os.stat(file1).st_mtime
-        SystemValues.backup_progress_path = rel_path
-        os.utime(file2, (st_mtime, st_mtime))
+        time1 = os.stat(file1).st_mtime
+        time2 = os.stat(file2).st_mtime
+        if time1 != time2:
+            # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
+            # -> 다음에 검사할때 검사 시간이 단축됨
+            os.utime(file2, (time1, time1))
         SystemValues.backup_progress_val += 1
 
 

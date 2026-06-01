@@ -43,10 +43,7 @@ class UiUpdater:
         # 진행률 표시 
         current_value = SystemValues.compare_progress_val
         max_value = SystemValues.compare_progress_max
-        if max_value == 0:
-            percentage = 0
-        else:
-            percentage = current_value / max_value * 100
+        percentage = _get_percentage(current_value, max_value)
         string = f"파일 검사 중 {current_value}/{max_value} ({percentage:.1f}%)"
         widgets.label_top_progress.config(text=string)
         
@@ -54,15 +51,71 @@ class UiUpdater:
         widgets.label_top_progress3.config(text=SystemValues.compare_progress_path)
 
         # 시간 표시
-        total_sec = int(time.time() - SystemValues.compare_start_time)
-        total_min = total_sec // 60 
-        total_hour = total_min // 60
-        seconds = total_sec % 60 
-        minutes = total_min % 60 
-        hours = total_hour 
-        time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        time_str = _get_time_str(time.time() - SystemValues.compare_start_time)
         widgets.label_top_progress2.config(text=time_str)
 
 
+    @classmethod 
+    def update_backup(cls, tick):
+        # 프로그레스바 
+        widgets.top_progressbar.config(
+            value=SystemValues.backup_progress_val, 
+            maximum=SystemValues.backup_progress_max
+            )
+
+        # 진행률 표시 
+        current_value = SystemValues.backup_progress_val
+        max_value = SystemValues.backup_progress_max
+        percentage = _get_percentage(current_value, max_value)
+        message = SystemValues.backup_progress_msg
+        string = f"{message} {current_value}/{max_value} ({percentage:.1f}%)"
+        widgets.label_top_progress.config(text=string)
+        
+        # 경로 표시
+        widgets.label_top_progress3.config(text=SystemValues.backup_progress_path)
+
+        # 시간 표시
+        time_str = _get_time_str(time.time() - SystemValues.backup_start_time)
+        widgets.label_top_progress2.config(text=time_str)
 
 
+        if SystemValues.copy_working:
+            widgets.frame_bottom_progress.pack(fill='x')
+        else:
+            widgets.frame_bottom_progress.pack_forget()
+
+        # 프로그레스바 
+        widgets.bottom_progressbar.config(
+            value=SystemValues.copy_progress_val, 
+            maximum=SystemValues.copy_progress_max
+            )
+
+        # 진행률 표시 
+        current_value = SystemValues.copy_progress_val
+        max_value = SystemValues.copy_progress_max
+        percentage = _get_percentage(current_value, max_value)
+        string = f"파일 복사 중 {current_value}/{max_value} ({percentage:.1f}%)"
+        widgets.label_bottom_progress.config(text=string)
+        
+        # 경로 표시
+        widgets.label_bottom_progress3.config(text=SystemValues.copy_progress_path)
+    
+
+
+def _get_percentage(current_value, max_value):
+    if max_value == 0:
+        percentage = 0
+    else:
+        percentage = int((current_value / max_value * 100) * 10) / 10
+    return percentage
+
+
+def _get_time_str(time_delta):
+    total_sec = int(time_delta)
+    total_min = total_sec // 60 
+    total_hour = total_min // 60
+    seconds = total_sec % 60 
+    minutes = total_min % 60 
+    hours = total_hour 
+    time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+    return time_str
