@@ -16,9 +16,6 @@ from system.backup import backup, boost_files
 
 # --- 각 화면 전환 함수 ---
 def show_home():
-
-
-
     # 테스트용 기본 경로 설정
     AppData.original_path = r"e:\test_a"
     AppData.target_path = r"e:\test_b"
@@ -68,12 +65,30 @@ def show_compare_result():
     btn_Previous.config(state="normal", command=btn_prev_compare_again)
 
     # 버튼 텍스트 업데이트 
-    btn_result_delete.config(text=f"삭제할 파일({len(res.files_rmv)})")
-    btn_result_delete2.config(text=f"삭제할 폴더({len(res.dirs_rmv)})")
-    btn_result_copy.config(text=f"복사할 파일({len(res.files_copy)})")
-    btn_result_copy2.config(text=f"복사할 폴더({len(res.dirs_copy)})")
-    btn_result_refresh.config(text=f"변경할 파일({len(res.files_renew)})")
-    btn_result_delete_clicked()
+    btn_result_delete.config(text=f"삭제할 파일({len(res.files_rmv)})",
+                             command=lambda:update_result_listbox(res.files_rmv))
+    btn_result_delete2.config(text=f"삭제할 폴더({len(res.dirs_rmv)})",
+                             command=lambda:update_result_listbox(res.dirs_rmv))
+    btn_result_copy.config(text=f"복사할 파일({len(res.files_copy)})",
+                             command=lambda:update_result_listbox(res.files_copy))
+    btn_result_copy2.config(text=f"복사할 폴더({len(res.dirs_copy)})",
+                             command=lambda:update_result_listbox(res.dirs_copy))
+    btn_result_refresh.config(text=f"변경할 파일({len(res.files_renew)})",
+                             command=lambda:update_result_listbox(res.files_renew))
+    
+    if len(res.files_rmv) != 0:
+        update_result_listbox(res.files_rmv)
+    elif len(res.dirs_rmv) != 0:
+        update_result_listbox(res.dirs_rmv)
+    elif len(res.files_copy) != 0:
+        update_result_listbox(res.files_copy)
+    elif len(res.dirs_copy) != 0:
+        update_result_listbox(res.dirs_copy) 
+    elif len(res.files_renew) != 0:
+        update_result_listbox(res.files_renew)
+    else:
+        update_result_listbox(res.files_rmv)
+
 
     switch_frame(frame_center_result)
     update_sidebar(3)
@@ -86,22 +101,75 @@ def show_backup():
     switch_frame(frame_center_progress)
     update_sidebar(4)
     Thread(target=run_backup, daemon=True).start()
-    # btn_begin.config(state="normal", text="완료", command=show_home)
-    # btn_Previous.config(state="disabled")
-    
-    # switch_frame(fram_center_complete)
-    # update_sidebar(4)
 
 
 def show_complete():
     btn_begin.config(text="처음으로", state="normal", command=show_home)
+    # btn_boost.config(text="최적화", state="normal", command=show_boost)
     btn_Previous.pack_forget()
     switch_frame(fram_center_complete)
     update_sidebar(6)
 
+
+def show_aftercheck_result():
+    res = AppData.failed_result # 실패한것만 다시
+    if res is None:
+        showerror(APPNAME, "알 수 없는 오류가 발생하였습니다.")
+        show_home()
+        return 
+        
+    btn_begin.config(text="백업", state="normal", command=show_re_backup)
+    btn_Previous.config(text="취소", state="normal", command=btn_prev_cancel_re_backup)
+
+    # 버튼 텍스트 업데이트 
+    btn_result_delete.config(text=f"삭제할 파일({len(res.files_rmv)})",
+                             command=lambda:update_result_listbox(res.files_rmv))
+    btn_result_delete2.config(text=f"삭제할 폴더({len(res.dirs_rmv)})",
+                             command=lambda:update_result_listbox(res.dirs_rmv))
+    btn_result_copy.config(text=f"복사할 파일({len(res.files_copy)})",
+                             command=lambda:update_result_listbox(res.files_copy))
+    btn_result_copy2.config(text=f"복사할 폴더({len(res.dirs_copy)})",
+                             command=lambda:update_result_listbox(res.dirs_copy))
+    btn_result_refresh.config(text=f"변경할 파일({len(res.files_renew)})",
+                             command=lambda:update_result_listbox(res.files_renew))
+    
+    if len(res.files_rmv) != 0:
+        update_result_listbox(res.files_rmv)
+    elif len(res.dirs_rmv) != 0:
+        update_result_listbox(res.dirs_rmv)
+    elif len(res.files_copy) != 0:
+        update_result_listbox(res.files_copy)
+    elif len(res.dirs_copy) != 0:
+        update_result_listbox(res.dirs_copy) 
+    elif len(res.files_renew) != 0:
+        update_result_listbox(res.files_renew)
+    else:
+        update_result_listbox(res.files_rmv)
+
+    switch_frame(frame_center_result)
+    update_sidebar(3)
+
+
+def show_re_backup():
+    btn_begin.config(text="다음", state="disabled")
+    btn_Previous.config(state="disabled")
+
+    switch_frame(frame_center_progress)
+    update_sidebar(4)
+    Thread(target=run_re_backup, daemon=True).start()
+
+
+def show_boost():
+    btn_begin.config(text="다음", state="disabled")
+    btn_Previous.config(state="disabled")
+
+    switch_frame(frame_center_progress)
+    update_sidebar(4)
+    Thread(target=run_boost, daemon=True).start()
+
+
+
 # --- 화면 관리 함수 ---
-
-
 def switch_frame(new_frame: Frame):
     """현재 관리 중인 프레임들을 모두 숨기고 지정된 프레임을 화면에 표시합니다."""
     for frame in frames:
@@ -203,62 +271,70 @@ def run_backup():
     SystemValues.backup_progress_msg = "재검사 완료"
     sleep(0.5)
 
-    # 백업에 문제가 없으면 
-    if AppData.failed_result.is_empty():
-        # 최적화로 넘어감 
-        update_sidebar(5)
-        boost_files(AppData.original_path, AppData.target_path, 
-                    AppData.compare_result.files_same)
-        sleep(0.5)
-        UiUpdater.stop()
-        # 프레임=성공
+    SystemValues.backup_run_time = time() - SystemValues.backup_start_time
+    UiUpdater.stop()
+
+    # 백업이 제대로 완료되지 않았다면
+    if not AppData.failed_result.is_empty():
+        root.after(0, show_aftercheck_result)
     else:
-        pass
-        # 문제 상황 발생
+        root.after(0, show_complete)
+
+
+def run_re_backup():
+    # run_backup의 파생형
+
+    SystemValues.backup_start_time = time()
+    UiUpdater.start(UiUpdater.update_backup)
+
+    backup(AppData.failed_result)
+    SystemValues.backup_progress_msg = "백업 완료"
+    sleep(0.5)
+
+    AppData.failed_result = aftercheck(AppData.failed_result, AppData.fast_scan)
+    SystemValues.backup_progress_msg = "재검사 완료"
+    sleep(0.5)
+
+    SystemValues.backup_run_time += time() - SystemValues.backup_start_time
+    UiUpdater.stop()
+
+    # 백업이 제대로 완료되지 않았다면
+    if not AppData.failed_result.is_empty():
+        root.after(0, show_aftercheck_result)
+    else:
+        root.after(0, show_complete)
+
+
+def run_boost():
+    SystemValues.backup_start_time = time()
+    UiUpdater.start(UiUpdater.update_backup)
+
+    boost_files(AppData.original_path, AppData.target_path, 
+                AppData.compare_result.files_same)
+    SystemValues.backup_progress_msg = "최적화 완료"
+    sleep(0.5)
 
     UiUpdater.stop()
-    SystemValues.backup_run_time = time() - SystemValues.backup_start_time
     root.after(0, show_complete)
-
-        
-
 
     
 def btn_prev_compare_again():
-    if not askyesno(title=APPNAME, message="다시 검사하시겠습니까?"):
+    if not askyesno(title=APPNAME, message="백업을 취소하시겠습니까?"):
         return None 
     
-    show_select_check_mode()
+    show_home()
 
-def btn_result_delete_clicked():
-    res = AppData.compare_result
-    if res is None:
-        return
-    update_result_listbox(res.files_rmv)
 
-def btn_result_delete2_clicked():
-    res = AppData.compare_result
-    if res is None:
-        return
-    update_result_listbox(res.dirs_rmv)
+def btn_prev_cancel_re_backup():
+    if not askyesno(title=APPNAME, message="모든 작업을 취소하시겠습니까?"):
+        return None 
+    
+    show_home()
 
-def btn_result_copy_clicked():
-    res = AppData.compare_result
-    if res is None:
-        return
-    update_result_listbox(res.files_copy)
 
-def btn_result_copy2_clicked():
-    res = AppData.compare_result
-    if res is None:
-        return
-    update_result_listbox(res.dirs_copy)
 
-def btn_result_refresh_clicked():
-    res = AppData.compare_result
-    if res is None:
-        return
-    update_result_listbox(res.files_renew)
+
+
 
 
 
@@ -301,8 +377,3 @@ btn_sel_org.config(command=btn_sel_org_clicked)
 btn_sel_target.config(command=btn_sel_target_clicked)
 btn_fast_sel.config(command=btn_fast_sel_clicked)
 btn_det_sel.config(command=btn_det_sel_clicked)
-btn_result_delete.config(command=btn_result_delete_clicked)
-btn_result_delete2.config(command=btn_result_delete2_clicked)
-btn_result_copy.config(command=btn_result_copy_clicked)
-btn_result_copy2.config(command=btn_result_copy2_clicked)
-btn_result_refresh.config(command=btn_result_refresh_clicked)

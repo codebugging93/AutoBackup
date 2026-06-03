@@ -99,6 +99,10 @@ class UiUpdater:
         
         # 경로 표시
         widgets.label_bottom_progress3.config(text=SystemValues.copy_progress_path)
+
+        # 시간 표시 (공백)
+        widgets.label_top_progress2.config(text="")
+        
     
 
 
