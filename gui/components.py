@@ -12,11 +12,25 @@ C = {"bg":          "#F0F2F7"}
 # 1. 원본 이미지 로드 (PIL Image)
 raw_label_home_img = Image.open(r"image\main_home.jpg")
 raw_btn_org_img = Image.open(r"image\folder_origin (1).png")
-raw_btn_tar_img = Image.open(r"image\target_folder.jpg")
+raw_btn_tar_img = Image.open(r"image\대상폴더.png")
 raw_btn_home = Image.open(r"image\btn_home_new.jpg")
 raw_btn_search = Image.open(r"image\btn_search.png")
 
+#단계표시용 이미지 원본
 
+step_home_img = Image.open(r"image\btn_home.jpg") # 임시로 이걸로 해놓음
+step_select_img = Image.open(r"image\step-2.png")  
+step_progress_img = Image.open(r"image\step-3.png")
+step_result_img = Image.open(r"image\step-4.png")
+step_backup_img = Image.open(r"image\step-5.png")
+step_complete_img = Image.open(r"image\step-6.png")
+
+step_home_img_inverted = Image.open(r"image\btn_home.jpg") # 임시로 이걸로 해놓음
+step_select_img_inverted = Image.open(r"image\step2.png")  
+step_progress_img_inverted = Image.open(r"image\step3.png")
+step_result_img_inverted = Image.open(r"image\step4.png")
+step_backup_img_inverted = Image.open(r"image\step5.png")
+step_complete_img_inverted = Image.open(r"image\step6.png")
 
 
 
@@ -27,12 +41,48 @@ res_btn_tar_img = raw_btn_tar_img.resize((250, 250), Image.LANCZOS)
 res_btn_home = raw_btn_home.resize((70, 70), Image.LANCZOS)
 res_btn_search = raw_btn_search.resize((70, 70), Image.LANCZOS)
 
+# 단계표시용 이미지 리사이즈
+res_step_home_img = step_home_img.resize((70,70), Image.LANCZOS) 
+res_step_select_img = step_select_img.resize((70,70), Image.LANCZOS) 
+res_step_progress_img = step_progress_img.resize((70,70), Image.LANCZOS) 
+res_step_result_img = step_result_img.resize((70,70), Image.LANCZOS) 
+res_step_backup_img = step_backup_img.resize((70,70), Image.LANCZOS)
+res_step_complete_img = step_complete_img.resize((70,70), Image.LANCZOS)
+
+res_step_home_img_inverted = step_home_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_select_img_inverted = step_select_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_progress_img_inverted = step_progress_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_result_img_inverted = step_result_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_backup_img_inverted = step_backup_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_complete_img_inverted = step_complete_img_inverted.resize((70,70), Image.LANCZOS)
+
+
 # 3. 실질적으로 사용하는 GUI 이미지 변환 (ImageTk.PhotoImage)
 tk_label_home_img = ImageTk.PhotoImage(res_label_home_img)
 tk_btn_org_img = ImageTk.PhotoImage(res_btn_org_img)
 tk_btn_tar_img = ImageTk.PhotoImage(res_btn_tar_img)
 tk_Img_step_home = ImageTk.PhotoImage(res_btn_home)
 tk_Img_btn_search = ImageTk.PhotoImage(res_btn_search)
+
+
+# 단계표시용 이미지 실사용
+
+# 현재 단계가 아닐시 배경이 하얀색 이미지 사용
+tk_step_home_img = ImageTk.PhotoImage(res_step_home_img)
+tk_step_select_img = ImageTk.PhotoImage(res_step_select_img)
+tk_step_progress_img = ImageTk.PhotoImage(res_step_progress_img)
+tk_step_result_img = ImageTk.PhotoImage(res_step_result_img)
+tk_step_backup_img = ImageTk.PhotoImage(res_step_backup_img)
+tk_step_complete_img = ImageTk.PhotoImage(res_step_complete_img)
+
+# _inverted 붙은거는 파랑 배경이미지 -> 현재 단계의 이미지에 사용
+tk_step_home_img_inverted = ImageTk.PhotoImage(res_step_home_img_inverted)
+tk_step_select_img_inverted = ImageTk.PhotoImage(res_step_select_img_inverted)
+tk_step_progress_img_inverted = ImageTk.PhotoImage(res_step_progress_img_inverted)
+tk_step_result_img_inverted = ImageTk.PhotoImage(res_step_result_img_inverted)
+tk_step_backup_img_inverted = ImageTk.PhotoImage(res_step_backup_img_inverted)
+tk_step_complete_img_inverted = ImageTk.PhotoImage(res_step_complete_img_inverted)
+
 
 
 # 스이세이블루는 상수로 정의됨(system/constants/SUISEI_BLUE)
@@ -44,17 +94,17 @@ tk_Img_btn_search = ImageTk.PhotoImage(res_btn_search)
 frame_LeftBar = Frame(root, relief="solid",  width="2c", bg="#f0f2f7", highlightbackground="#cdd2e0", highlightthickness=1)
 frame_LeftBar.pack(side = "left",fill="y")
 frame_LeftBar.pack_propagate(0)
-label_step_img = Label(frame_LeftBar, image=tk_Img_step_home)
+label_step_img = Label(frame_LeftBar, text = "test")
 label_step_img.pack(pady="1", padx="0.2c")
-label_step_img2 = Label(frame_LeftBar, image=tk_Img_btn_search)
+label_step_img2 = Label(frame_LeftBar, image = tk_step_select_img)
 label_step_img2.pack()
-label_step_img3 = Label(frame_LeftBar, text= "단계3", height="3")
+label_step_img3 = Label(frame_LeftBar, image = tk_step_progress_img)
 label_step_img3.pack()
-label_step_img4 = Label(frame_LeftBar, text= "단계4", height="3")
+label_step_img4 = Label(frame_LeftBar, image = tk_step_result_img)
 label_step_img4.pack()
-label_step_img5 = Label(frame_LeftBar, text= "단계5", height="3")
+label_step_img5 = Label(frame_LeftBar, image = tk_step_backup_img)
 label_step_img5.pack()
-label_step_img6 = Label(frame_LeftBar, text= "단계6", height="3")
+label_step_img6 = Label(frame_LeftBar, image = tk_step_complete_img)
 label_step_img6.pack()
 
 #중앙 화면 메인 프레임
@@ -104,8 +154,8 @@ btn_sel_target.pack()
 
 label_tar_path = Label(frame_tar_part, text="백업폴더의 주소경로가 들어갈위치", bg="#f0f2f7")
 label_tar_path.pack(pady= (40,10))
-#ui구성후 프레임 구성하는 선 지우기 relief값 bd값 삭제
-#-------------------------------------------------------------------------------2번콘티
+
+
 
 #3번 검사선택
 
@@ -158,11 +208,19 @@ label_top_progress2 = Label(frame_top_progress_label, text = "이곳엔 진행�
 label_top_progress2.pack(side="right")
 
 # 이 프로그레스바는 frame_top_progress 소속
+long_path = r'"C:\Users\kls77\AppData\Local\Programs\Python\Python314\python.exe "c:/Users/kls77/Desktop/AutoBackup_WIP 260529 0/main.sssssssssspy"'
 top_progressbar = ttk.Progressbar(frame_top_progress, maximum = 100, mode = "determinate" )
 top_progressbar.pack(fill="x", padx="5")
 
-label_top_progress3 = Label(frame_top_progress, text = "이곳엔 파일의 경로를 표시", bg="#f0f2f7", wraplength=500, justify="left")
+label_top_progress3 = Label(frame_top_progress, text=(lambda p: p if len(p) <= 100 else p[:50] + "..." + p[-50:])(long_path), bg="#f0f2f7", wraplength=700, justify="left")
 label_top_progress3.pack(side="top", anchor="w")
+
+
+""" top_progressbar = ttk.Progressbar(frame_top_progress, maximum = 100, mode = "determinate" )
+top_progressbar.pack(fill="x", padx="5")
+
+label_top_progress3 = Label(frame_top_progress, text = "이곳엔 파일의 경로를 표시", bg="#f0f2f7", wraplength=450, justify="left")
+label_top_progress3.pack(side="top", anchor="w") """
 
 frame_bottom_progress = Frame(frame_center_progress, relief="solid", bg="#f0f2f7")
 # frame_bottom_progress.pack(fill="x",)
@@ -174,9 +232,6 @@ frame_bottom_progress_label.pack(fill="x", )
 label_bottom_progress = Label(frame_bottom_progress_label, text = "이곳엔 파일의 전체 진행도가 000/000로 표시", bg="#f0f2f7")
 label_bottom_progress.pack(side="left")
 
-label_bottom_progress2 = Label(frame_bottom_progress_label, text = "이곳엔 진행시간 00 : 00 표시", bg="#f0f2f7")
-label_bottom_progress2.pack(side="right")
-
 bottom_progressbar = ttk.Progressbar(frame_bottom_progress, maximum = 100, mode = "determinate" )
 bottom_progressbar.pack(fill="x", padx="5")
 
@@ -187,11 +242,19 @@ label_bottom_progress3.pack(side="top", anchor="w")
 
 #5번 메인프레임 
 frame_center_result = Frame(frame_main, relief="solid", bd="1")
-frame_center_result.pack()
+
+# 1:2 비율 설정을 위한 그리드 가중치 설정 (0번 행: 상단, 1번 행: 리스트)
+frame_center_result.grid_rowconfigure(0, weight=1)
+frame_center_result.grid_rowconfigure(1, weight=2)
+frame_center_result.grid_columnconfigure(0, weight=1)
+
+# 상단 구성 요소들을 묶을 프레임 (비율 1 영역)
+frame_result_header = Frame(frame_center_result, bg="#f0f2f7")
+frame_result_header.grid(row=0, column=0, sticky="nsew")
 
 # 5  탑 프레임(삭제,복사,갱신 버튼)
-frame_btn_result = Frame(frame_center_result, relief="solid", bd="1", bg="#f0f2f7")
-frame_btn_result.pack(side="top", fill='x')
+frame_btn_result = Frame(frame_result_header, relief="solid", bd="1", bg="#f0f2f7")
+frame_btn_result.pack(side="top", fill='x', pady=5)
 btn_result_delete = Button(frame_btn_result, text="삭제할 파일(n)")
 btn_result_delete.pack(side="left")
 btn_result_delete2 = Button(frame_btn_result, text="삭제할 파일(n)")
@@ -203,14 +266,17 @@ btn_result_copy2.pack(side="left")
 btn_result_refresh = Button(frame_btn_result, text="갱신할 파일(n)")
 btn_result_refresh.pack(side="left")
 
+lable_expl_result = Label(frame_result_header, text="다음파일들을 백업합니다", bg="#f0f2f7", font = ("굴림", 14))
+lable_expl_result.pack(side="top", expand=True)
+
 # 5 버튼배열 하단에 리스트 
-frame_mid_result = Frame(frame_center_result, relief="solid", bd="1", bg="#f0f2f7")
-frame_mid_result.pack(fill='both', expand=True)
+frame_mid_result = Frame(frame_center_result,  bg="#f0f2f7")
+frame_mid_result.grid(row=1, column=0, sticky="nsew")
 
 mid_result_scroll = Scrollbar(frame_mid_result)
 mid_result_scroll.pack(side="right", fill="y")
 mid_result_list = Listbox(frame_mid_result, selectmode="single", height=10, width="70", yscrollcommand=mid_result_scroll.set)
-mid_result_list.pack(fill="both", expand=True, pady="5")
+mid_result_list.pack(fill="both", expand=True, padx=10, pady=10)
 mid_result_scroll.config(command=mid_result_list.yview)
 
 
@@ -240,11 +306,11 @@ for i in range(50):
 
 
 #7번 백업완료
-fram_center_complete = Frame(frame_main, relief="solid", bd="1")
+frame_center_complete = Frame(frame_main, relief="solid", bd="1")
 
 #7번 중앙 리스트박스
 
-frame_btn_complete = Frame(fram_center_complete, relief="solid", bd="1")
+frame_btn_complete = Frame(frame_center_complete, relief="solid", bd="1")
 frame_btn_complete.pack(side="top")
 btn_compl_delete = Button(frame_btn_complete, text="삭제할 파일(n)")
 btn_compl_delete.pack(side="left")
@@ -257,24 +323,31 @@ btn_compl_copy2.pack(side="left")
 btn_compl_refresh = Button(frame_btn_complete, text="갱신할 파일(n)")
 btn_compl_refresh.pack(side="left")
 
-label_complete = Label(fram_center_complete, text = "결과내용1", bg="#f0f2f7")
+label_complete = Label(frame_center_complete, text = "결과내용1", bg="#f0f2f7")
 label_complete.pack()
-label_complete2 = Label(fram_center_complete, text = "결과내용2", bg="#f0f2f7")
+label_complete2 = Label(frame_center_complete, text = "결과내용2", bg="#f0f2f7")
 label_complete2.pack()
-label_complete3 = Label(fram_center_complete, text = "결과내용3", bg="#f0f2f7")
+label_complete3 = Label(frame_center_complete, text = "결과내용3", bg="#f0f2f7")
 label_complete3.pack()
+
+
+
 
 
 #-------------------------------------------------------------------------------------
 
 #하단 바
-fram_bottombar = Frame(root,bg="#F0F2F7", height = "1.5c", highlightbackground="#cdd2e0", highlightthickness=1)
-fram_bottombar.pack(side="bottom",fill="both")
-fram_bottombar.pack_propagate(0)
+frame_bottombar = Frame(root,bg="#F0F2F7", height = "1.5c", highlightbackground="#cdd2e0", highlightthickness=1)
+frame_bottombar.pack(side="bottom",fill="both")
+frame_bottombar.pack_propagate(0)
 
-btn_Previous = Button(fram_bottombar,fg="gray", text= "이전", width="15", highlightbackground="#cdd2e0", highlightthickness=1)
+# 완료단계에서만 표시
+btn_optimize = Button(frame_bottombar, text= "최적화",  width="15", highlightbackground="#cdd2e0", highlightthickness=1)
+# btn_begin.pack(side="right",fill="y")
+
+btn_Previous = Button(frame_bottombar, text= "이전", width="15", highlightbackground="#cdd2e0", highlightthickness=1)
 btn_Previous.pack(side="left", fill="y")
-btn_begin = Button(fram_bottombar, text= "시작",  width="15", highlightbackground="#cdd2e0", highlightthickness=1)
+btn_begin = Button(frame_bottombar, text= "시작",  width="15", highlightbackground="#cdd2e0", highlightthickness=1)
 btn_begin.pack(side="right",fill="y")
 
 root.resizable(False,False) #전체 화면 가로,세로 사이즈 조절x 
@@ -282,7 +355,7 @@ root.resizable(False,False) #전체 화면 가로,세로 사이즈 조절x
 # 프레임 변경 배열
 frames = [
     frame_center_home, frame_center_select, frame_center_check, 
-    frame_center_progress, frame_center_result, fram_center_complete
+    frame_center_progress, frame_center_result, frame_center_complete
 ]
 
 #모든 프레임 bg값 자동화

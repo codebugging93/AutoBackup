@@ -14,6 +14,7 @@ from system.constants import APPNAME, SUISEI_BLUE
 from system.backup import backup, boost_files
 
 
+
 # --- 각 화면 전환 함수 ---
 def show_home():
     # 테스트용 기본 경로 설정
@@ -23,6 +24,7 @@ def show_home():
 
     btn_Previous.pack_forget()
     btn_begin.config(state="normal", text="시작", command=show_select_folder)
+    btn_optimize.pack_forget()
     switch_frame(frame_center_home)
     update_sidebar(0)
 
@@ -105,10 +107,12 @@ def show_backup():
 
 def show_complete():
     btn_begin.config(text="처음으로", state="normal", command=show_home)
-    # btn_boost.config(text="최적화", state="normal", command=show_boost)
+    btn_optimize.config(text="최적화", state="normal", command=show_boost)
+    btn_optimize.pack(side='right', fill='y')
+
     btn_Previous.pack_forget()
-    switch_frame(fram_center_complete)
-    update_sidebar(6)
+    switch_frame(frame_center_complete)
+    update_sidebar(5)
 
 
 def show_aftercheck_result():
@@ -162,6 +166,7 @@ def show_re_backup():
 def show_boost():
     btn_begin.config(text="다음", state="disabled")
     btn_Previous.config(state="disabled")
+    btn_optimize.pack_forget()
 
     switch_frame(frame_center_progress)
     update_sidebar(4)
@@ -176,13 +181,33 @@ def switch_frame(new_frame: Frame):
         frame.pack_forget()
     new_frame.pack(expand=True, fill="both")
 
+# 사이드바 이미지 배열 
+_sidebar_images = [
+    tk_step_home_img,
+    tk_step_select_img,
+    tk_step_progress_img,
+    tk_step_result_img,
+    tk_step_backup_img,
+    tk_step_complete_img,
+]
+
+_sidebar_images_inverted = [
+    tk_step_home_img_inverted,
+    tk_step_select_img_inverted,
+    tk_step_progress_img_inverted,
+    tk_step_result_img_inverted,
+    tk_step_backup_img_inverted,
+    tk_step_complete_img_inverted,
+]
+
+
 def update_sidebar(index: int):
     """왼쪽 상태바의 레이블 색상을 현재 단계에 맞춰 업데이트합니다."""
     for i, label in enumerate(labels):
         if i == index:
-            label.config(bg=SUISEI_BLUE)
+            labels[i].config(image=_sidebar_images_inverted[i])
         else:
-            label.config(bg="white")
+            labels[i].config(image=_sidebar_images[i])
 
 def update_result_listbox(data_list):
     """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
@@ -330,44 +355,6 @@ def btn_prev_cancel_re_backup():
         return None 
     
     show_home()
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-"""def show_second_result_frame(frame_type):
-    # 6-2 프레임 숨기기
-    frame_mid_del_result.pack_forget()
-    frame_bot_del_result.pack_forget()
-    
-    frame_mid_copy_result.pack_forget()
-    frame_bot_copy_result.pack_forget()
-    
-    frame_mid_renew_result.pack_forget()
-    frame_bot_renew_result.pack_forget()
-
-    if frame_type == "delete":
-        frame_mid_del_result.pack(side="top", pady="5")
-        frame_bot_del_result.pack(side="top", pady="5")
-    elif frame_type == "copy":
-        frame_mid_copy_result.pack(side="top", pady="5")
-        frame_bot_copy_result.pack(side="top", pady="5")
-    elif frame_type == "renew":
-        frame_mid_renew_result.pack(side="top", pady="5")
-        frame_bot_renew_result.pack(side="top", pady="5")
-"""
 
 
 # 초기 UI 상태 업데이트
