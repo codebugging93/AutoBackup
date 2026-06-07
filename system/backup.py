@@ -18,11 +18,15 @@ def backup(compare_result: CompareResult):
     SystemValues.backup_progress_msg = ""
     SystemValues.backup_progress_path = ""
     
-    root = compare_result.tar_path
-    Trashbin.make_trashbin(Path(root).anchor) # 같은 드라이브 폴더에 휴지통을 만듦
+    # 삭제, 갱신 등의 작업이 있다면 휴지통을 만듦
+    if not (len(compare_result.files_rmv) == 0 and 
+            len(compare_result.dirs_rmv) == 0 and 
+            len(compare_result.files_renew) == 0):
+        root = compare_result.tar_path
+        Trashbin.make_trashbin(Path(root).anchor) # 같은 드라이브 폴더에 휴지통을 만듦
 
     # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
-    SystemValues.backup_progress_msg = "파일 삭제 중"
+    SystemValues.backup_progress_msg = "파일 삭제 중"   
     remove_files(
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.files_rmv)
@@ -32,7 +36,7 @@ def backup(compare_result: CompareResult):
         compare_result.org_path, 
         compare_result.tar_path,
         compare_result.files_copy)
-    
+
     SystemValues.backup_progress_msg = "파일 갱신 중"
     renew_files(
         compare_result.org_path, 

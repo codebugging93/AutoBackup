@@ -110,6 +110,9 @@ def show_complete():
     btn_optimize.config(text="최적화", state="normal", command=show_boost)
     btn_optimize.pack(side='right', fill='y')
 
+    label_complete.config(text="검사한 시간 : {:.1f}초".format(SystemValues.compare_run_time))
+    label_complete2.config(text="백업한 시간 : {:.1f}초".format(SystemValues.backup_run_time))
+
     btn_Previous.pack_forget()
     switch_frame(frame_center_complete)
     update_sidebar(5)
@@ -267,37 +270,33 @@ def btn_det_sel_clicked():
 
 def run_compare():
     UiUpdater.start(UiUpdater.update_compare)
-    SystemValues.compare_start_time = time()
 
+    SystemValues.compare_start_time = time()
     AppData.compare_result = compare(
         AppData.original_path,
         AppData.target_path,
         AppData.fast_scan
         )
-    
     SystemValues.compare_run_time = time() - SystemValues.compare_start_time
-    sleep(0.5)
+
     UiUpdater.stop()
+    sleep(0.5)
 
     root.after(0, show_compare_result)
 
 
 def run_backup():
     # 진행중에 바뀌는 메시지는 backup(), aftercheck(), boost_files() 안에 존재한다.
-
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     backup(AppData.compare_result)
-    SystemValues.backup_progress_msg = "백업 완료"
-    sleep(0.5)
-
     AppData.failed_result = aftercheck(AppData.compare_result, AppData.fast_scan)
-    SystemValues.backup_progress_msg = "재검사 완료"
-    sleep(0.5)
-
     SystemValues.backup_run_time = time() - SystemValues.backup_start_time
+
+    SystemValues.backup_progress_msg = "백업 완료"
     UiUpdater.stop()
+    sleep(0.5)
 
     # 백업이 제대로 완료되지 않았다면
     if not AppData.failed_result.is_empty():
@@ -308,20 +307,16 @@ def run_backup():
 
 def run_re_backup():
     # run_backup의 파생형
-
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     backup(AppData.failed_result)
-    SystemValues.backup_progress_msg = "백업 완료"
-    sleep(0.5)
-
     AppData.failed_result = aftercheck(AppData.failed_result, AppData.fast_scan)
-    SystemValues.backup_progress_msg = "재검사 완료"
-    sleep(0.5)
-
     SystemValues.backup_run_time += time() - SystemValues.backup_start_time
+    
+    SystemValues.backup_progress_msg = "백업 완료"
     UiUpdater.stop()
+    sleep(0.5)
 
     # 백업이 제대로 완료되지 않았다면
     if not AppData.failed_result.is_empty():
@@ -331,15 +326,16 @@ def run_re_backup():
 
 
 def run_boost():
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     boost_files(AppData.original_path, AppData.target_path, 
                 AppData.compare_result.files_same)
+    
     SystemValues.backup_progress_msg = "최적화 완료"
+    UiUpdater.stop()
     sleep(0.5)
 
-    UiUpdater.stop()
     root.after(0, show_complete)
 
     

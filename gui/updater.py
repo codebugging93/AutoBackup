@@ -4,6 +4,8 @@ import time
 from system.SystemValues import SystemValues
 import gui.components as widgets
 
+summarize_str = lambda p: p if len(p) <= 70 else p[:35] + "..." + p[-35:]
+
 class UiUpdater:
     running = False 
     
@@ -21,6 +23,8 @@ class UiUpdater:
             func(tick)
 
             time.sleep(1 / 30)      # 약 0.033초 대기
+
+        func(tick) # 종료시 한번 더 업데이트
 
     @classmethod
     def start(cls, func):
@@ -48,7 +52,8 @@ class UiUpdater:
         widgets.label_top_progress.config(text=string)
         
         # 경로 표시
-        widgets.label_top_progress3.config(text=SystemValues.compare_progress_path)
+        path = summarize_str(SystemValues.compare_progress_path)
+        widgets.label_top_progress3.config(text=path)
 
         # 시간 표시
         time_str = _get_time_str(time.time() - SystemValues.compare_start_time)
@@ -72,7 +77,8 @@ class UiUpdater:
         widgets.label_top_progress.config(text=string)
         
         # 경로 표시
-        widgets.label_top_progress3.config(text=SystemValues.backup_progress_path)
+        path = summarize_str(SystemValues.compare_progress_path)
+        widgets.label_top_progress3.config(text=path)
 
         # 시간 표시
         time_str = _get_time_str(time.time() - SystemValues.backup_start_time)
@@ -98,13 +104,8 @@ class UiUpdater:
         widgets.label_bottom_progress.config(text=string)
         
         # 경로 표시
-        widgets.label_bottom_progress3.config(text=SystemValues.copy_progress_path)
-
-        # 시간 표시 (공백)
-        widgets.label_top_progress2.config(text="")
-        
-    
-
+        path = summarize_str(SystemValues.compare_progress_path)
+        widgets.label_bottom_progress3.config(text=path)
 
 def _get_percentage(current_value, max_value):
     if max_value == 0:

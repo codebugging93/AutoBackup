@@ -18,14 +18,14 @@ raw_btn_search = Image.open(r"image\btn_search.png")
 
 #단계표시용 이미지 원본
 
-step_home_img = Image.open(r"image\btn_home.jpg") # 임시로 이걸로 해놓음
+step_home_img = Image.open(r"image\step-1.png") 
 step_select_img = Image.open(r"image\step-2.png")  
 step_progress_img = Image.open(r"image\step-3.png")
 step_result_img = Image.open(r"image\step-4.png")
 step_backup_img = Image.open(r"image\step-5.png")
 step_complete_img = Image.open(r"image\step-6.png")
 
-step_home_img_inverted = Image.open(r"image\btn_home.jpg") # 임시로 이걸로 해놓음
+step_home_img_inverted = Image.open(r"image\step1.png") 
 step_select_img_inverted = Image.open(r"image\step2.png")  
 step_progress_img_inverted = Image.open(r"image\step3.png")
 step_result_img_inverted = Image.open(r"image\step4.png")
@@ -94,8 +94,8 @@ tk_step_complete_img_inverted = ImageTk.PhotoImage(res_step_complete_img_inverte
 frame_LeftBar = Frame(root, relief="solid",  width="2c", bg="#f0f2f7", highlightbackground="#cdd2e0", highlightthickness=1)
 frame_LeftBar.pack(side = "left",fill="y")
 frame_LeftBar.pack_propagate(0)
-label_step_img = Label(frame_LeftBar, text = "test")
-label_step_img.pack(pady="1", padx="0.2c")
+label_step_img = Label(frame_LeftBar, image = tk_step_home_img)
+label_step_img.pack()
 label_step_img2 = Label(frame_LeftBar, image = tk_step_select_img)
 label_step_img2.pack()
 label_step_img3 = Label(frame_LeftBar, image = tk_step_progress_img)
@@ -194,7 +194,7 @@ btn_det_sel.pack()
 frame_center_progress = Frame(frame_main, relief="solid", bd="1")
 
 # 부모속성의 값을 불러오지 못하는 프레임
-frame_top_progress = Frame(frame_center_progress, relief="solid")
+frame_top_progress = Frame(frame_center_progress, relief="solid", bg="#f0f2f7")
 frame_top_progress.pack(fill="x",)
 
 # 상위 레이블 2개를 담을 프레임을 따로 제작하였음
@@ -212,15 +212,8 @@ long_path = r'"C:\Users\kls77\AppData\Local\Programs\Python\Python314\python.exe
 top_progressbar = ttk.Progressbar(frame_top_progress, maximum = 100, mode = "determinate" )
 top_progressbar.pack(fill="x", padx="5")
 
-label_top_progress3 = Label(frame_top_progress, text=(lambda p: p if len(p) <= 100 else p[:50] + "..." + p[-50:])(long_path), bg="#f0f2f7", wraplength=700, justify="left")
-label_top_progress3.pack(side="top", anchor="w")
-
-
-""" top_progressbar = ttk.Progressbar(frame_top_progress, maximum = 100, mode = "determinate" )
-top_progressbar.pack(fill="x", padx="5")
-
-label_top_progress3 = Label(frame_top_progress, text = "이곳엔 파일의 경로를 표시", bg="#f0f2f7", wraplength=450, justify="left")
-label_top_progress3.pack(side="top", anchor="w") """
+label_top_progress3 = Label(frame_top_progress, text=long_path, bg="#f0f2f7", wraplength=700, justify="left")
+label_top_progress3.pack(side="top", anchor="w") 
 
 frame_bottom_progress = Frame(frame_center_progress, relief="solid", bg="#f0f2f7")
 # frame_bottom_progress.pack(fill="x",)
@@ -235,7 +228,7 @@ label_bottom_progress.pack(side="left")
 bottom_progressbar = ttk.Progressbar(frame_bottom_progress, maximum = 100, mode = "determinate" )
 bottom_progressbar.pack(fill="x", padx="5")
 
-label_bottom_progress3 = Label(frame_bottom_progress, text = "이곳엔 파일의 경로를 표시", bg="#f0f2f7",wraplength=500, justify="left")
+label_bottom_progress3 = Label(frame_bottom_progress, text=long_path, bg="#f0f2f7", wraplength=700, justify="left")
 label_bottom_progress3.pack(side="top", anchor="w")
 
 #5번 검사결과표시
@@ -310,25 +303,11 @@ frame_center_complete = Frame(frame_main, relief="solid", bd="1")
 
 #7번 중앙 리스트박스
 
-frame_btn_complete = Frame(frame_center_complete, relief="solid", bd="1")
-frame_btn_complete.pack(side="top")
-btn_compl_delete = Button(frame_btn_complete, text="삭제할 파일(n)")
-btn_compl_delete.pack(side="left")
-btn_compl_delete2 = Button(frame_btn_complete, text="삭제할 파일(n)")
-btn_compl_delete2.pack(side="left")
-btn_compl_copy = Button(frame_btn_complete, text="복사할 파일(n)")
-btn_compl_copy.pack(side="left")
-btn_compl_copy2 = Button(frame_btn_complete, text="복사할 파일(n)")
-btn_compl_copy2.pack(side="left")
-btn_compl_refresh = Button(frame_btn_complete, text="갱신할 파일(n)")
-btn_compl_refresh.pack(side="left")
 
-label_complete = Label(frame_center_complete, text = "결과내용1", bg="#f0f2f7")
-label_complete.pack()
-label_complete2 = Label(frame_center_complete, text = "결과내용2", bg="#f0f2f7")
-label_complete2.pack()
-label_complete3 = Label(frame_center_complete, text = "결과내용3", bg="#f0f2f7")
-label_complete3.pack()
+label_complete = Label(frame_center_complete, text="검사한 시간 : n초", font=("", 14), bg="#f0f2f7")
+label_complete.pack(anchor="w", pady="30", padx="15")
+label_complete2 = Label(frame_center_complete, text="백업한 시간 : n초", font=("", 14), bg="#f0f2f7")
+label_complete2.pack(anchor="w", padx="15")
 
 
 
@@ -355,7 +334,7 @@ root.resizable(False,False) #전체 화면 가로,세로 사이즈 조절x
 # 프레임 변경 배열
 frames = [
     frame_center_home, frame_center_select, frame_center_check, 
-    frame_center_progress, frame_center_result, frame_center_complete
+    frame_center_progress, frame_center_result, frame_center_complete,
 ]
 
 #모든 프레임 bg값 자동화
