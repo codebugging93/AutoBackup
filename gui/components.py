@@ -1,9 +1,10 @@
 from tkinter import*
 from tkinter import ttk 
 from PIL import Image, ImageTk
+from system.constants import APPNAME
 
 root = Tk() 
-root.title("Home_Layout")
+root.title(APPNAME)
 root.geometry("900x600+220+40") #가로1060, 세로 700 x값 220, y값 40
 
 C = {"bg":          "#F0F2F7"}
@@ -87,24 +88,24 @@ tk_step_complete_img_inverted = ImageTk.PhotoImage(res_step_complete_img_inverte
 
 # 스이세이블루는 상수로 정의됨(system/constants/SUISEI_BLUE)
 #ui구성
-
+root.iconphoto(True, tk_step_home_img)
 
 
 #왼쪽 단계 표시 바
 frame_LeftBar = Frame(root, relief="solid",  width="2c", bg="#f0f2f7", highlightbackground="#cdd2e0", highlightthickness=1)
 frame_LeftBar.pack(side = "left",fill="y")
 frame_LeftBar.pack_propagate(0)
-label_step_img = Label(frame_LeftBar, image = tk_step_home_img)
+label_step_img = Label(frame_LeftBar, image = tk_step_home_img, bg="#f0f2f7")
 label_step_img.pack()
-label_step_img2 = Label(frame_LeftBar, image = tk_step_select_img)
+label_step_img2 = Label(frame_LeftBar, image = tk_step_select_img, bg="#f0f2f7")
 label_step_img2.pack()
-label_step_img3 = Label(frame_LeftBar, image = tk_step_progress_img)
+label_step_img3 = Label(frame_LeftBar, image = tk_step_progress_img, bg="#f0f2f7")
 label_step_img3.pack()
-label_step_img4 = Label(frame_LeftBar, image = tk_step_result_img)
+label_step_img4 = Label(frame_LeftBar, image = tk_step_result_img, bg="#f0f2f7")
 label_step_img4.pack()
-label_step_img5 = Label(frame_LeftBar, image = tk_step_backup_img)
+label_step_img5 = Label(frame_LeftBar, image = tk_step_backup_img, bg="#f0f2f7")
 label_step_img5.pack()
-label_step_img6 = Label(frame_LeftBar, image = tk_step_complete_img)
+label_step_img6 = Label(frame_LeftBar, image = tk_step_complete_img, bg="#f0f2f7")
 label_step_img6.pack()
 
 #중앙 화면 메인 프레임
@@ -132,7 +133,7 @@ label_original.pack(pady= (80,10))
 btn_sel_org = Button(frame_org_part, text="백업폴더",image=tk_btn_org_img)
 btn_sel_org.pack()
 
-label_org_path = Label(frame_org_part, text="원본폴더의 주소경로가 들어갈위치길이 테스트 시공의폭풍은 언제나 최고야 지금즉시 가입시 무료똥말 증정 매주 무료 영웅 20종 꾸준한 밸런스 패치", wraplength=250, justify="center", bg="#f0f2f7")
+label_org_path = Label(frame_org_part, text="", wraplength=250, justify="center", bg="#f0f2f7")
 label_org_path.pack(pady = (40,10))
 
 
@@ -152,7 +153,7 @@ btn_sel_target = Button(frame_tar_part, text="백업폴더", image=tk_btn_tar_im
 btn_sel_target.pack()
 
 
-label_tar_path = Label(frame_tar_part, text="백업폴더의 주소경로가 들어갈위치", bg="#f0f2f7")
+label_tar_path = Label(frame_tar_part, text="", bg="#f0f2f7")
 label_tar_path.pack(pady= (40,10))
 
 
@@ -245,31 +246,37 @@ frame_center_result.grid_columnconfigure(0, weight=1)
 frame_result_header = Frame(frame_center_result, bg="#f0f2f7")
 frame_result_header.grid(row=0, column=0, sticky="nsew")
 
-# 5  탑 프레임(삭제,복사,갱신 버튼)
-frame_btn_result = Frame(frame_result_header, relief="solid", bd="1", bg="#f0f2f7")
-frame_btn_result.pack(side="top", fill='x', pady=5)
-btn_result_delete = Button(frame_btn_result, text="삭제할 파일(n)")
-btn_result_delete.pack(side="left")
-btn_result_delete2 = Button(frame_btn_result, text="삭제할 파일(n)")
-btn_result_delete2.pack(side="left")
-btn_result_copy = Button(frame_btn_result, text="복사할 파일(n)")
-btn_result_copy.pack(side="left")
-btn_result_copy2 = Button(frame_btn_result, text="복사할 파일(n)")
-btn_result_copy2.pack(side="left")
-btn_result_refresh = Button(frame_btn_result, text="갱신할 파일(n)")
-btn_result_refresh.pack(side="left")
-
 lable_expl_result = Label(frame_result_header, text="다음파일들을 백업합니다", bg="#f0f2f7", font = ("굴림", 14))
-lable_expl_result.pack(side="top", expand=True)
+lable_expl_result.pack(side="top", expand=True, fill = "x")
+
+# 5  탑 프레임(삭제,복사,갱신 버튼)
+
+
+
 
 # 5 버튼배열 하단에 리스트 
-frame_mid_result = Frame(frame_center_result,  bg="#f0f2f7")
+
+frame_mid_result = Frame(frame_center_result, bg="#f0f2f7")
 frame_mid_result.grid(row=1, column=0, sticky="nsew")
+
+frame_btn_result = Frame(frame_mid_result, bg="#f0f2f7")
+frame_btn_result.pack(side="top", fill='x', pady=(5, 0), padx=10)
+
+btn_result_delete = Button(frame_btn_result, text="삭제할 파일(n)",relief = "solid", bd=1)
+btn_result_delete.pack(side="left")
+btn_result_delete2 = Button(frame_btn_result, text="삭제할 파일(n)",relief = "solid", bd=1)
+btn_result_delete2.pack(side="left")
+btn_result_copy = Button(frame_btn_result, text="복사할 파일(n)",relief = "solid", bd=1)
+btn_result_copy.pack(side="left")
+btn_result_copy2 = Button(frame_btn_result, text="복사할 파일(n)",relief = "solid", bd=1)
+btn_result_copy2.pack(side="left")
+btn_result_refresh = Button(frame_btn_result, text="갱신할 파일(n)",relief = "solid", bd=1)
+btn_result_refresh.pack(side="left")
 
 mid_result_scroll = Scrollbar(frame_mid_result)
 mid_result_scroll.pack(side="right", fill="y")
-mid_result_list = Listbox(frame_mid_result, selectmode="single", height=10, width="70", yscrollcommand=mid_result_scroll.set)
-mid_result_list.pack(fill="both", expand=True, padx=10, pady=10)
+mid_result_list = Listbox(frame_mid_result, selectmode="single", height=10, width="70", yscrollcommand=mid_result_scroll.set,relief = "solid", bd=1 )
+mid_result_list.pack(fill="both", expand=True, padx=10, pady=(0,10))
 mid_result_scroll.config(command=mid_result_list.yview)
 
 

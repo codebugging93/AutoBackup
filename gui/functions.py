@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 from time import sleep, time
 
@@ -17,10 +18,10 @@ from system.backup import backup, boost_files
 
 # --- 각 화면 전환 함수 ---
 def show_home():
-    # 테스트용 기본 경로 설정
-    AppData.original_path = r"e:\test_a"
-    AppData.target_path = r"e:\test_b"
-    AppData.fast_scan = True 
+    # # 테스트용 기본 경로 설정
+    # AppData.original_path = r"e:\test_a"
+    # AppData.target_path = r"e:\test_b"
+    # AppData.fast_scan = True 
 
     btn_Previous.pack_forget()
     btn_begin.config(state="normal", text="시작", command=show_select_folder)
@@ -231,6 +232,7 @@ def btn_sel_org_clicked():
         showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
         return None
     
+    path = os.path.normpath(path)
     AppData.original_path = path 
     label_org_path.config(text=path)
 
@@ -246,6 +248,7 @@ def btn_sel_target_clicked():
         showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
         return None 
     
+    path = os.path.normpath(path)
     AppData.target_path = path 
     label_tar_path.config(text=path)
 

@@ -77,7 +77,7 @@ class UiUpdater:
         widgets.label_top_progress.config(text=string)
         
         # 경로 표시
-        path = summarize_str(SystemValues.compare_progress_path)
+        path = summarize_str(SystemValues.backup_progress_path)
         widgets.label_top_progress3.config(text=path)
 
         # 시간 표시
@@ -104,7 +104,7 @@ class UiUpdater:
         widgets.label_bottom_progress.config(text=string)
         
         # 경로 표시
-        path = summarize_str(SystemValues.compare_progress_path)
+        path = summarize_str(SystemValues.copy_progress_path)
         widgets.label_bottom_progress3.config(text=path)
 
 def _get_percentage(current_value, max_value):

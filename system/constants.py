@@ -3,6 +3,7 @@ from enum import Enum
 
 # 자동 경로 설정
 APPNAME = "AutoBackup"
+VERSION = "0.1"
 SUISEI_BLUE = "#75B7EA"
 
 
