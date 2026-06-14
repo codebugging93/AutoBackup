@@ -21,10 +21,10 @@ def copy_file(src, dst, mkdirs=True, metadata=True):
         _dir = os.path.dirname(dst)
         os.makedirs(_dir, exist_ok=mkdirs)
 
-    shutil.copyfile(src, dst) # 파일 복사
+    shutil.copyfile(src, dst, follow_symlinks=False) # 파일 복사
     if metadata:
         try: 
-            shutil.copystat(src, dst) # 메타데이터 복사
+            shutil.copystat(src, dst, follow_symlinks=False) # 메타데이터 복사
         except PermissionError:
             # chmod를 사용할 권한이 없는 경우 PermissionError가 발생함 
             pass 

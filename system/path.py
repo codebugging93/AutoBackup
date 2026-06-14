@@ -77,9 +77,12 @@ def get_dirname_set(path):
     return_dirs = set()
     
     for root, dirs, files in os.walk(path):
-        return_dirs = set(dirs)
-        break
-            
+        for i in dirs:
+            p = os.path.join(root, i)
+            if not os.path.islink(p):
+                return_dirs.add(i)
+        break    
+        
     return return_dirs
 
 
