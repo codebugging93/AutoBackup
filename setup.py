@@ -5,7 +5,7 @@ from system.constants import APPNAME, VERSION
 executables = [Executable(
     "main.py", 
     base="Win32GUI", 
-    icon="logo.ico",
+    icon="image/logo.ico",
     target_name=APPNAME,
     )]
 
