@@ -37,6 +37,8 @@ def get_depth(path):
 
     return len(split_path(path))를 실행할 뿐임.
     그래서 이미 path list가 있을때는 쓰지 말 것.
+
+    * 260자를 넘나드는 경로에서 테스트 완료
     """
     return len(split_path(path))
 

@@ -4,6 +4,19 @@ import os
 from pathlib import Path
 from system.DepthList import DepthError, DepthList, get_depth, split_path
 
+PREFIX_MAX_PATH = "\\\\?\\"
+
+
+def norm_max_path(path: str):
+    """ 윈도우에서만 동작하며, 
+        다른 운영체제에서 실행하면 그대로 리턴한다."""
+    # if len(path) < 261:
+    #     return path
+
+    if os.name != 'nt' or path.startswith(PREFIX_MAX_PATH):
+        return path 
+    
+    return PREFIX_MAX_PATH + path
 
 def cut_path(path, depth):
     """ 
@@ -147,11 +160,11 @@ def get_path_info(path) -> tuple[DepthList, int, int]:
     folders = 0
 
     # counter.num1 = 0
-    for root, dirs, files in os.walk(path):
+    for root, dirs, _files in os.walk(path):
         cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
         dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
         
-        files += len(files)
+        files += len(_files)
         folders += 1
         # counter.num1 = folders 
         # UI가 읽을 값

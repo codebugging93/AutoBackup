@@ -3,8 +3,9 @@ import time
 
 from system.SystemValues import SystemValues
 import gui.components as widgets
+from system.path import PREFIX_MAX_PATH
 
-summarize_str = lambda p: p if len(p) <= 70 else p[:35] + "..." + p[-35:]
+summarize_str = lambda p: p.removeprefix(PREFIX_MAX_PATH) if len(p) <= 70 else p[:35] + "..." + p[-35:]
 
 class UiUpdater:
     running = False 

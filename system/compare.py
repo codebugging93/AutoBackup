@@ -1,10 +1,8 @@
 import os
-from time import sleep, time
 
 from system.SystemValues import SystemValues
-from system.byte import convert_byte
 from system.filecmp_modified import auto_set_filter, cmp_filter
-from system.path import get_dirname_set, get_filename_set, merge_path
+from system.path import get_dirname_set, get_filename_set, merge_path, norm_max_path
 
 
 class CompareResult:
@@ -70,6 +68,10 @@ def compare(org_path, tar_path, fast_scan=True):
     SystemValues.compare_progress_path = ""
     
     auto_set_filter(tar_path) # 검사 속도 향상
+
+    # 260자 경로 제한 버그 해결
+    org_path = norm_max_path(org_path)
+    tar_path = norm_max_path(tar_path)
 
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
     result = compare_dirs(org_path, tar_path) # TODO 이것도 SystemValues 반영하면 좋겠음

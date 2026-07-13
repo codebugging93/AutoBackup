@@ -13,6 +13,7 @@ from system.aftercheck import aftercheck
 from system.compare import compare
 from system.constants import APPNAME, SUISEI_BLUE
 from system.backup import backup, boost_files
+from system.path import PREFIX_MAX_PATH
 
 
 
@@ -213,11 +214,12 @@ def update_sidebar(index: int):
         else:
             labels[i].config(image=_sidebar_images[i])
 
-def update_result_listbox(data_list):
+def update_result_listbox(data_list: list[str]):
     """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
     mid_result_list.delete(0, END)
     # 데이터가 set인 경우를 대비해 정렬된 리스트로 변환하여 삽입
     for item in sorted(list(data_list)):
+        item = item.removeprefix(PREFIX_MAX_PATH)
         mid_result_list.insert(END, item)
 
 
