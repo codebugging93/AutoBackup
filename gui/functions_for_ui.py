@@ -1,3 +1,5 @@
+import os
+import shutil
 from threading import Thread
 from time import sleep, time
 
@@ -12,7 +14,7 @@ from system.aftercheck import aftercheck
 from system.compare import CompareResult, compare
 from system.constants import APPNAME, SUISEI_BLUE
 from system.backup import backup, boost
-
+from system.path import PREFIX_MAX_PATH, is_dest_in_src
 
 
 # --- 각 화면 전환 함수 ---
@@ -34,7 +36,6 @@ def show_select_folder():
     btn_Previous.pack(side="left", fill="y")
     btn_begin_path_check()
 
-    # 화면상에 선택된 경로 표시 
     switch_frame(frame_center_select)
     update_sidebar(1)
 
@@ -110,6 +111,9 @@ def show_complete():
     btn_begin.config(text="처음으로", state="normal", command=show_home)
     btn_optimize.config(text="최적화", state="normal", command=show_boost)
     btn_optimize.pack(side='right', fill='y')
+
+    label_complete.config(text="검사한 시간 : {:.1f}초".format(SystemValues.compare_run_time))
+    label_complete2.config(text="백업한 시간 : {:.1f}초".format(SystemValues.backup_run_time))
 
     btn_Previous.pack_forget()
     switch_frame(frame_center_complete)
@@ -211,52 +215,74 @@ def update_sidebar(index: int):
         else:
             labels[i].config(image=_sidebar_images[i])
 
-def update_result_listbox(data_list):
+def update_result_listbox(data_list: list[str]):
     """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
     mid_result_list.delete(0, END)
     # 데이터가 set인 경우를 대비해 정렬된 리스트로 변환하여 삽입
     for item in sorted(list(data_list)):
+        item = item.removeprefix(PREFIX_MAX_PATH)
         mid_result_list.insert(END, item)
 
 
 # --- 이벤트 핸들러 ---
 # 폴더 선택 화면 
 def btn_sel_org_clicked():
-    path = askdirectory(title="원본 폴더 선택")
-    if not path: 
-        return None
-    
-    if path == label_tar_path['text']:
-        showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
-        return None
-    
-    label_org_path['text'] = path 
-    label_org_path.config(text=path)
+    while True:
+        path = askdirectory(title="원본 폴더 선택")
+        # 취소
+        if not path: 
+            return None
+        
+        # 같은 폴더 선택
+        path = os.path.normpath(path)
+        if path == label_tar_path['text']:
+            showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
+            continue 
 
+        break 
+
+    label_org_path.config(text=path)
     btn_begin_path_check()
 
 
 def btn_sel_target_clicked():
-    path = askdirectory(title="대상 폴더 선택")
-    if not path: 
-        return None
+    while True:
+        path = askdirectory(title="대상 폴더 선택")
+        # 취소
+        if not path: 
+            return None
+        
+        # 같은 폴더 선택
+        path = os.path.normpath(path)
+        if path == label_org_path['text']:
+            showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
+            continue 
 
-    if path == label_org_path['text']:
-        showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
-        return None 
+        break 
     
-    label_tar_path['text'] = path 
     label_tar_path.config(text=path)
-
     btn_begin_path_check()
 
 
 def btn_begin_path_check():
-    if label_org_path['text'] is not None and label_tar_path['text'] is not None \
-        and label_org_path['text'] != label_tar_path['text']:
-        btn_begin.config(state="normal")
-    else:
+    # 유저가 선택을 하지 않은 경우: 잠금
+    if len(label_org_path['text']) == 0 or len(label_tar_path['text']) == 0:
         btn_begin.config(state="disabled")
+        return 
+    
+    # 유저가 같은 폴더를 선택한 경우: 잠금
+    if label_org_path['text'] == label_tar_path['text']:
+        btn_begin.config(state="disabled")
+        return 
+    
+    # 유저가 내부 폴더를 선택한 경우: 잠금
+    if is_dest_in_src(label_org_path['text'], label_tar_path['text']) or \
+        is_dest_in_src(label_tar_path['text'], label_org_path['text']):
+        btn_begin.config(state="disabled")
+        showerror("오류", "한쪽을 포함하는 폴더는 백업할 수 없습니다.\n다른 폴더를 선택해주세요.")
+        return 
+
+    btn_begin.config(state="normal")
     
 
 # 백업 모드 선택 화면 
@@ -269,37 +295,33 @@ def btn_det_sel_clicked():
 
 def run_compare():
     UiUpdater.start(UiUpdater.update_compare)
-    SystemValues.compare_start_time = time()
 
+    SystemValues.compare_start_time = time()
     AppData.compare_result = compare(
         label_org_path['text'],
         label_tar_path['text'],
         AppData.fast_scan
         )
-    
     SystemValues.compare_run_time = time() - SystemValues.compare_start_time
-    sleep(0.5)
+
     UiUpdater.stop()
+    sleep(0.5)
 
     root.after(0, show_compare_result)
 
 
 def run_backup():
     # 진행중에 바뀌는 메시지는 backup(), aftercheck(), boost_files() 안에 존재한다.
-
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     backup(AppData.compare_result)
-    SystemValues.backup_progress_msg = "백업 완료"
-    sleep(0.5)
-
     AppData.failed_result = aftercheck(AppData.compare_result, AppData.fast_scan)
-    SystemValues.backup_progress_msg = "재검사 완료"
-    sleep(0.5)
-
     SystemValues.backup_run_time = time() - SystemValues.backup_start_time
+
+    SystemValues.backup_progress_msg = "백업 완료"
     UiUpdater.stop()
+    sleep(0.5)
 
     # 백업이 제대로 완료되지 않았다면
     if not AppData.failed_result.is_empty():
@@ -310,20 +332,16 @@ def run_backup():
 
 def run_re_backup():
     # run_backup의 파생형
-
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     backup(AppData.failed_result)
-    SystemValues.backup_progress_msg = "백업 완료"
-    sleep(0.5)
-
     AppData.failed_result = aftercheck(AppData.failed_result, AppData.fast_scan)
-    SystemValues.backup_progress_msg = "재검사 완료"
-    sleep(0.5)
-
     SystemValues.backup_run_time += time() - SystemValues.backup_start_time
+    
+    SystemValues.backup_progress_msg = "백업 완료"
     UiUpdater.stop()
+    sleep(0.5)
 
     # 백업이 제대로 완료되지 않았다면
     if not AppData.failed_result.is_empty():
@@ -333,14 +351,15 @@ def run_re_backup():
 
 
 def run_boost():
-    SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
+    SystemValues.backup_start_time = time()
     boost(AppData.compare_result)
+
     SystemValues.backup_progress_msg = "최적화 완료"
+    UiUpdater.stop()
     sleep(0.5)
 
-    UiUpdater.stop()
     root.after(0, show_complete)
 
     

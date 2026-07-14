@@ -20,8 +20,8 @@ from system.path import PREFIX_MAX_PATH, is_dest_in_src
 # --- 각 화면 전환 함수 ---
 def show_home():
     # # 테스트용 기본 경로 설정
-    # AppData.original_path = r"e:\test_a"
-    # AppData.target_path = r"e:\test_b"
+    # label_org_path.config(text=r"e:\test_a")
+    # label_tar_path.config(text=r"e:\test_b")
     # AppData.fast_scan = True 
 
     btn_Previous.pack_forget()
@@ -351,7 +351,7 @@ def run_boost():
 
     SystemValues.backup_start_time = time()
     boost(AppData.compare_result)
-    
+
     SystemValues.backup_progress_msg = "최적화 완료"
     UiUpdater.stop()
     sleep(0.5)
