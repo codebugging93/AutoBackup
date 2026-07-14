@@ -11,15 +11,15 @@ from system.SystemValues import SystemValues
 from system.aftercheck import aftercheck
 from system.compare import CompareResult, compare
 from system.constants import APPNAME, SUISEI_BLUE
-from system.backup import backup, boost_files
+from system.backup import backup, boost
 
 
 
 # --- 각 화면 전환 함수 ---
 def show_home():
     # 테스트용 기본 경로 설정
-    AppData.original_path = r"e:\test_a"
-    AppData.target_path = r"e:\test_b"
+    label_org_path.config(text=r"e:\test_a")
+    label_tar_path.config(text=r"e:\test_b")
     AppData.fast_scan = True 
 
     btn_Previous.pack_forget()
@@ -35,8 +35,6 @@ def show_select_folder():
     btn_begin_path_check()
 
     # 화면상에 선택된 경로 표시 
-    label_org_path.config(text=AppData.original_path)
-    label_tar_path.config(text=AppData.target_path)
     switch_frame(frame_center_select)
     update_sidebar(1)
 
@@ -228,11 +226,11 @@ def btn_sel_org_clicked():
     if not path: 
         return None
     
-    if path == AppData.target_path:
+    if path == label_tar_path['text']:
         showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
         return None
     
-    AppData.original_path = path 
+    label_org_path['text'] = path 
     label_org_path.config(text=path)
 
     btn_begin_path_check()
@@ -243,19 +241,19 @@ def btn_sel_target_clicked():
     if not path: 
         return None
 
-    if path == AppData.original_path:
+    if path == label_org_path['text']:
         showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
         return None 
     
-    AppData.target_path = path 
+    label_tar_path['text'] = path 
     label_tar_path.config(text=path)
 
     btn_begin_path_check()
 
 
 def btn_begin_path_check():
-    if AppData.original_path is not None and AppData.target_path is not None \
-        and AppData.original_path != AppData.target_path:
+    if label_org_path['text'] is not None and label_tar_path['text'] is not None \
+        and label_org_path['text'] != label_tar_path['text']:
         btn_begin.config(state="normal")
     else:
         btn_begin.config(state="disabled")
@@ -274,8 +272,8 @@ def run_compare():
     SystemValues.compare_start_time = time()
 
     AppData.compare_result = compare(
-        AppData.original_path,
-        AppData.target_path,
+        label_org_path['text'],
+        label_tar_path['text'],
         AppData.fast_scan
         )
     
@@ -338,8 +336,7 @@ def run_boost():
     SystemValues.backup_start_time = time()
     UiUpdater.start(UiUpdater.update_backup)
 
-    boost_files(AppData.original_path, AppData.target_path, 
-                AppData.compare_result.files_same)
+    boost(AppData.compare_result)
     SystemValues.backup_progress_msg = "최적화 완료"
     sleep(0.5)
 

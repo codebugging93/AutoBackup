@@ -1,4 +1,5 @@
 import os
+import shutil
 from threading import Thread
 from time import sleep, time
 
@@ -12,9 +13,8 @@ from system.SystemValues import SystemValues
 from system.aftercheck import aftercheck
 from system.compare import compare
 from system.constants import APPNAME, SUISEI_BLUE
-from system.backup import backup, boost_files
-from system.path import PREFIX_MAX_PATH
-
+from system.backup import backup, boost
+from system.path import PREFIX_MAX_PATH, is_dest_in_src
 
 
 # --- 각 화면 전환 함수 ---
@@ -36,9 +36,6 @@ def show_select_folder():
     btn_Previous.pack(side="left", fill="y")
     btn_begin_path_check()
 
-    # 화면상에 선택된 경로 표시 
-    label_org_path.config(text=AppData.original_path)
-    label_tar_path.config(text=AppData.target_path)
     switch_frame(frame_center_select)
     update_sidebar(1)
 
@@ -226,43 +223,62 @@ def update_result_listbox(data_list: list[str]):
 # --- 이벤트 핸들러 ---
 # 폴더 선택 화면 
 def btn_sel_org_clicked():
-    path = askdirectory(title="원본 폴더 선택")
-    if not path: 
-        return None
-    
-    if path == AppData.target_path:
-        showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
-        return None
-    
-    path = os.path.normpath(path)
-    AppData.original_path = path 
-    label_org_path.config(text=path)
+    while True:
+        path = askdirectory(title="원본 폴더 선택")
+        # 취소
+        if not path: 
+            return None
+        
+        # 같은 폴더 선택
+        path = os.path.normpath(path)
+        if path == label_tar_path['text']:
+            showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
+            continue 
 
+        break 
+
+    label_org_path.config(text=path)
     btn_begin_path_check()
 
 
 def btn_sel_target_clicked():
-    path = askdirectory(title="대상 폴더 선택")
-    if not path: 
-        return None
+    while True:
+        path = askdirectory(title="대상 폴더 선택")
+        # 취소
+        if not path: 
+            return None
+        
+        # 같은 폴더 선택
+        path = os.path.normpath(path)
+        if path == label_org_path['text']:
+            showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
+            continue 
 
-    if path == AppData.original_path:
-        showerror("오류", "같은 폴더는 선택하실 수 없습니다.")
-        return None 
+        break 
     
-    path = os.path.normpath(path)
-    AppData.target_path = path 
     label_tar_path.config(text=path)
-
     btn_begin_path_check()
 
 
 def btn_begin_path_check():
-    if AppData.original_path is not None and AppData.target_path is not None \
-        and AppData.original_path != AppData.target_path:
-        btn_begin.config(state="normal")
-    else:
+    # 유저가 선택을 하지 않은 경우: 잠금
+    if len(label_org_path['text']) == 0 or len(label_tar_path['text']) == 0:
         btn_begin.config(state="disabled")
+        return 
+    
+    # 유저가 같은 폴더를 선택한 경우: 잠금
+    if label_org_path['text'] == label_tar_path['text']:
+        btn_begin.config(state="disabled")
+        return 
+    
+    # 유저가 내부 폴더를 선택한 경우: 잠금
+    if is_dest_in_src(label_org_path['text'], label_tar_path['text']) or \
+        is_dest_in_src(label_tar_path['text'], label_org_path['text']):
+        btn_begin.config(state="disabled")
+        showerror("오류", "한쪽을 포함하는 폴더는 백업할 수 없습니다.\n다른 폴더를 선택해주세요.")
+        return 
+
+    btn_begin.config(state="normal")
     
 
 # 백업 모드 선택 화면 
@@ -278,8 +294,8 @@ def run_compare():
 
     SystemValues.compare_start_time = time()
     AppData.compare_result = compare(
-        AppData.original_path,
-        AppData.target_path,
+        label_org_path['text'],
+        label_tar_path['text'],
         AppData.fast_scan
         )
     SystemValues.compare_run_time = time() - SystemValues.compare_start_time
@@ -334,8 +350,7 @@ def run_boost():
     UiUpdater.start(UiUpdater.update_backup)
 
     SystemValues.backup_start_time = time()
-    boost_files(AppData.original_path, AppData.target_path, 
-                AppData.compare_result.files_same)
+    boost(AppData.compare_result)
     
     SystemValues.backup_progress_msg = "최적화 완료"
     UiUpdater.stop()

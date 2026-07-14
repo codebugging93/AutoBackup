@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 from system.depth import DepthError, get_depth, split_path
 
+
+
 PREFIX_MAX_PATH = "\\\\?\\"
 
 
@@ -17,6 +19,21 @@ def norm_max_path(path: str):
         return path 
     
     return PREFIX_MAX_PATH + path
+
+
+def is_dest_in_src(src, dst):
+    """ 
+    shutil.py의 _destinsrc 함수를 그대로 가져옴 
+    src가 dst를 포함하면 True를 반환함.
+    """
+    src = os.path.realpath(src)
+    dst = os.path.realpath(dst)
+    if not src.endswith(os.path.sep):
+        src += os.path.sep
+    if not dst.endswith(os.path.sep):
+        dst += os.path.sep
+    return dst.startswith(src)
+
 
 def cut_path(path, depth):
     """ 
