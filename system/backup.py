@@ -4,7 +4,7 @@ from time import sleep, time
 import shutil
 
 from system.SystemValues import SystemValues
-from system.DepthList import get_depth
+from system.depth import get_depth
 from system.compare import CompareResult
 from system.path import cut_path, merge_path
 from system.file import copy_dir, copy_file, move_file
@@ -142,7 +142,7 @@ def copy_dirs(org_path, tar_path, dirs: list):
         
 
 # 최적화 만들기
-def boost_files(org_path, tar_path, same_files: list | set):
+def boost(compare_result: CompareResult):
     """ 
     org_path와 tar_path에 들어있는 동일한 파일이 담긴 
     상대 경로 리스트 same_files에 대해서
@@ -152,11 +152,11 @@ def boost_files(org_path, tar_path, same_files: list | set):
     """
     SystemValues.backup_progress_msg = "검사 속도 향상을 위한 최적화"
     SystemValues.backup_progress_val = 0  
-    SystemValues.backup_progress_max = len(same_files)
-    for rel_path in same_files:
+    SystemValues.backup_progress_max = len(compare_result.files_same)
+    for rel_path in compare_result.files_same:
         SystemValues.backup_progress_path = rel_path
-        file1 = merge_path(org_path, rel_path)
-        file2 = merge_path(tar_path, rel_path)
+        file1 = merge_path(compare_result.org_path, rel_path)
+        file2 = merge_path(compare_result.tar_path, rel_path)
 
         time1 = os.stat(file1).st_mtime
         time2 = os.stat(file2).st_mtime
