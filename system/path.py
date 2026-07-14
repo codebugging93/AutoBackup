@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from system.DepthList import DepthError, DepthList, get_depth, split_path
+from system.depth import DepthError, get_depth, split_path
 
 PREFIX_MAX_PATH = "\\\\?\\"
 
@@ -146,51 +146,51 @@ def add_dir_num(path, folder):
 # 다소 무거운 작업들 
 #####################
 
-def get_path_info(path) -> tuple[DepthList, int, int]:
-    """
-    depthlist, 폴더 수, 파일 수 를 한번에 구하는 함수
+# def get_path_info(path) -> tuple[DepthList, int, int]:
+#     """
+#     depthlist, 폴더 수, 파일 수 를 한번에 구하는 함수
 
-    counter.num1을 사용한다.
-    """
-    path = os.path.normpath(path)
-    path_depth = get_depth(path)
+#     counter.num1을 사용한다.
+#     """
+#     path = os.path.normpath(path)
+#     path_depth = get_depth(path)
 
-    dlist = DepthList()
-    files = 0
-    folders = 0
+#     dlist = DepthList()
+#     files = 0
+#     folders = 0
 
-    # counter.num1 = 0
-    for root, dirs, _files in os.walk(path):
-        cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
-        dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
+#     # counter.num1 = 0
+#     for root, dirs, _files in os.walk(path):
+#         cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
+#         dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
         
-        files += len(_files)
-        folders += 1
-        # counter.num1 = folders 
-        # UI가 읽을 값
+#         files += len(_files)
+#         folders += 1
+#         # counter.num1 = folders 
+#         # UI가 읽을 값
 
-    return dlist, folders, files
+#     return dlist, folders, files
 
 
-def get_relpath_dlist(path) -> DepthList:
-    """
-    path에서부터 하위 폴더를 탐색하여
-    상대 경로(relative path, 줄여서 relpath)가 들어있는 DepthList를 반환한다.
+# def get_relpath_dlist(path) -> DepthList:
+#     """
+#     path에서부터 하위 폴더를 탐색하여
+#     상대 경로(relative path, 줄여서 relpath)가 들어있는 DepthList를 반환한다.
 
-    counter.num1을 사용한다.
-    """
+#     counter.num1을 사용한다.
+#     """
 
-    path = os.path.normpath(path)
-    path_depth = get_depth(path)
-    dlist = DepthList()
+#     path = os.path.normpath(path)
+#     path_depth = get_depth(path)
+#     dlist = DepthList()
 
-    # counter.num1 = 0
-    for root, dirs, files in os.walk(path):
-        cut = cut_path(root, path_depth) 
-        dlist.add(cut) 
-        # counter.num1 += 1
+#     # counter.num1 = 0
+#     for root, dirs, files in os.walk(path):
+#         cut = cut_path(root, path_depth) 
+#         dlist.add(cut) 
+#         # counter.num1 += 1
 
-    return dlist
+#     return dlist
 
 
 def get_files_relpath(path) -> list:

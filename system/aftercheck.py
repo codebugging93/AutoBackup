@@ -3,7 +3,7 @@ from time import sleep, time
 
 from system.SystemValues import SystemValues
 from system.compare import CompareResult, compare
-from system.DepthList import get_depth
+from system.depth import get_depth
 from system.path import cut_path
 from system.filecmp_modified import cmp_filter
 

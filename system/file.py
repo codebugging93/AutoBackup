@@ -1,7 +1,7 @@
 import shutil
 import os
 
-from system.DepthList import get_depth
+from system.depth import get_depth
 from system.SystemValues import SystemValues
 from system.path import cut_path, merge_path
 
