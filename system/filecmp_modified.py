@@ -13,6 +13,7 @@ __all__ = [
 
 import stat
 import os
+from system.SystemValues import SystemValues
 from system.path import add_file_num
 
 
@@ -116,6 +117,7 @@ def cmp_filter(f1, f2, shallow=True):
     if s1[0] != stat.S_IFREG or s2[0] != stat.S_IFREG:
         return False
     if shallow and s1 == s2:
+        SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
         return True
     if s1[1] != s2[1]:
         return False

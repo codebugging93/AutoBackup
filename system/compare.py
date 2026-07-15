@@ -113,7 +113,7 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
         common_names = org_files & tar_files
         SystemValues.compare_progress_max += len(common_names)
     
-
+    SystemValues.optimized_count = 0 # 최적화율 측정
     # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
     for rel_path in dirs_same: # rel_path: 상대경로
         # 원본과 사본에 동시에 존재하는 폴더의 절대경로
@@ -152,6 +152,9 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
         for fname in (tar_files - common_names):
             fpath = os.path.join(tar_dir, fname) # 삭제할 파일은 타겟에 존재함
             rmv.append(fpath) # 절대 경로로 저장
+
+    # 최적화율 계산
+    SystemValues.optimized_percent = SystemValues.optimized_count / len(same) * 100 
     
     result = CompareResult()
     result.org_path = org_path

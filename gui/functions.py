@@ -1,3 +1,4 @@
+import math
 import os
 import shutil
 from threading import Thread
@@ -128,6 +129,7 @@ def show_complete():
 
     label_complete.config(text="검사한 시간 : {:.1f}초".format(SystemValues.compare_run_time))
     label_complete2.config(text="백업한 시간 : {:.1f}초".format(SystemValues.backup_run_time))
+    label_complete3.config(text="최적화율 : {:.1f}%".format(int(SystemValues.optimized_percent * 10) / 10))
 
     btn_Previous.pack_forget()
     switch_frame(frame_center_complete)
@@ -365,6 +367,7 @@ def run_re_backup():
 
 def run_boost():
     UiUpdater.start(UiUpdater.update_backup)
+    SystemValues.backup_progress_msg = "검사 속도 향상을 위한 최적화"
 
     SystemValues.backup_start_time = time()
     boost(AppData.compare_result)

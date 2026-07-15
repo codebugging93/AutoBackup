@@ -150,9 +150,9 @@ def boost(compare_result: CompareResult):
 
     org_path의 파일의 수정된 시간을 tar_path쪽의 파일로 복사하는 작업이다.
     """
-    SystemValues.backup_progress_msg = "검사 속도 향상을 위한 최적화"
     SystemValues.backup_progress_val = 0  
     SystemValues.backup_progress_max = len(compare_result.files_same)
+    
     for rel_path in compare_result.files_same:
         SystemValues.backup_progress_path = rel_path
         file1 = merge_path(compare_result.org_path, rel_path)
@@ -166,27 +166,29 @@ def boost(compare_result: CompareResult):
             os.utime(file2, (time1, time1))
         SystemValues.backup_progress_val += 1
 
+    SystemValues.optimized_percent = 100
+
 
 # 최적화 테스트용 함수
-def _check_files(org_path, tar_path, same_files: list | set):
-    """ 
-    org_path와 tar_path에 들어있는 동일한 파일이 담긴 
-    상대 경로 리스트 same_files에 대해서
-    다음 검사시에 속도를 줄일 수 있도록 최적화를 진행한다.
+def check_opti_rate(compare_result: CompareResult):
+    SystemValues.backup_progress_val = 0  
+    SystemValues.backup_progress_max = len(compare_result.files_same)
 
-    org_path의 파일의 수정된 시간을 tar_path쪽의 파일로 복사하는 작업이다.
-    """
     count = 0
-    for rel_path in same_files:
-        file1 = merge_path(org_path, rel_path)
-        file2 = merge_path(tar_path, rel_path)
+    for rel_path in compare_result.files_same:
+        SystemValues.backup_progress_path = rel_path
+        file1 = merge_path(compare_result.org_path, rel_path)
+        file2 = merge_path(compare_result.tar_path, rel_path)
 
-        # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
-        # -> 다음에 검사할때 검사 시간이 단축됨
         time1 = os.stat(file1).st_mtime
         time2 = os.stat(file2).st_mtime
-        if time1 != time2:
+        if time1 == time2:
             count += 1
-        
-    print("최적화되지 않은 파일의 개수:", count)
+        # else:
+        #     # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
+        #     # -> 다음에 검사할때 검사 시간이 단축됨
+        #     os.utime(file2, (time1, time1))
+            
+        SystemValues.backup_progress_val += 1
 
+    SystemValues.optimized_percent = count / len(compare_result.files_same) * 100

@@ -21,5 +21,8 @@ class SystemValues:
     copy_progress_path = ""
     copy_working = False
 
+    optimized_count = 0 
+    optimized_percent = 0.0 # 백분율
+
 
     

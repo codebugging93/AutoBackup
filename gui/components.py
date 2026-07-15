@@ -315,6 +315,8 @@ label_complete = Label(frame_center_complete, text="검사한 시간 : n초", fo
 label_complete.pack(anchor="w", pady="30", padx="15")
 label_complete2 = Label(frame_center_complete, text="백업한 시간 : n초", font=("", 14), bg="#f0f2f7")
 label_complete2.pack(anchor="w", padx="15")
+label_complete3 = Label(frame_center_complete, text="최적화율 : n%", font=("", 14), bg="#f0f2f7")
+label_complete3.pack(anchor="w", padx="15")
 
 
 
