@@ -5,7 +5,7 @@ from time import sleep, time
 
 from gui.components import *
 from tkinter.filedialog import askdirectory
-from tkinter.messagebox import askyesno, showerror
+from tkinter.messagebox import askyesno, showerror, showwarning
 
 from gui.updater import UiUpdater
 from system.AppData import AppData
@@ -77,6 +77,7 @@ def show_compare_result():
     btn_result_refresh.config(text=f"변경할 파일({len(res.files_renew)})",
                              command=lambda:update_result_listbox(res.files_renew))
     
+    # 리스트박스 업데이트(내용이 존재하는거로)
     if len(res.files_rmv) != 0:
         update_result_listbox(res.files_rmv)
     elif len(res.dirs_rmv) != 0:
@@ -90,17 +91,28 @@ def show_compare_result():
     else:
         update_result_listbox(res.files_rmv)
 
+    # 경로 표시
+    _org = res.org_path.removeprefix(PREFIX_MAX_PATH)
+    _tar = res.tar_path.removeprefix(PREFIX_MAX_PATH)
+    lable_expl_result.config(text=f"원본 폴더의 내용은 변경되지 않습니다.\n원본 폴더 : {_org}\n대상 폴더 : {_tar}")
+
+    # 유저가 폴더를 잘못 선택할 가능성을 확인함     
     bool1 = len(res.dirs_rmv) == get_root_dirs_count(res.tar_path) 
     bool2 = len(res.dirs_copy) == get_root_dirs_count(res.org_path) 
 
+    # 화면 전환
     switch_frame(frame_center_result)
     update_sidebar(3)
-
+    
+    # 유저가 폴더를 잘못 선택함을 알림
     if bool1 or bool2:
-        showerror("경고", "폴더 구조가 매우 다릅니다.\n폴더를 제대로 선택하셨는지 다시 한번 확인해주세요.")
+        showwarning("경고", "폴더 구조가 매우 다릅니다.\n폴더를 제대로 선택하셨는지 확인하세요.")
 
 
 def show_backup():
+    if not askyesno(APPNAME, "백업을 시작합니까?"):
+        return 
+
     btn_begin.config(text="다음", state="disabled")
     btn_Previous.config(state="disabled")
 
