@@ -36,26 +36,26 @@ step_complete_img_inverted = Image.open(r"image\step6.png")
 
 
 # 2. 이미지 리사이즈 (PIL Image resized)
-res_label_home_img = raw_label_home_img.resize((900, 600), Image.LANCZOS)
-res_btn_org_img = raw_btn_org_img.resize((250, 250), Image.LANCZOS)
-res_btn_tar_img = raw_btn_tar_img.resize((250, 250), Image.LANCZOS)
-res_btn_home = raw_btn_home.resize((70, 70), Image.LANCZOS)
-res_btn_search = raw_btn_search.resize((70, 70), Image.LANCZOS)
+res_label_home_img = raw_label_home_img.resize((900, 600), Image.Resampling.LANCZOS)
+res_btn_org_img = raw_btn_org_img.resize((250, 250), Image.Resampling.LANCZOS)
+res_btn_tar_img = raw_btn_tar_img.resize((250, 250), Image.Resampling.LANCZOS)
+res_btn_home = raw_btn_home.resize((70, 70), Image.Resampling.LANCZOS)
+res_btn_search = raw_btn_search.resize((70, 70), Image.Resampling.LANCZOS)
 
 # 단계표시용 이미지 리사이즈
-res_step_home_img = step_home_img.resize((70,70), Image.LANCZOS) 
-res_step_select_img = step_select_img.resize((70,70), Image.LANCZOS) 
-res_step_progress_img = step_progress_img.resize((70,70), Image.LANCZOS) 
-res_step_result_img = step_result_img.resize((70,70), Image.LANCZOS) 
-res_step_backup_img = step_backup_img.resize((70,70), Image.LANCZOS)
-res_step_complete_img = step_complete_img.resize((70,70), Image.LANCZOS)
+res_step_home_img = step_home_img.resize((70,70), Image.Resampling.LANCZOS) 
+res_step_select_img = step_select_img.resize((70,70), Image.Resampling.LANCZOS) 
+res_step_progress_img = step_progress_img.resize((70,70), Image.Resampling.LANCZOS) 
+res_step_result_img = step_result_img.resize((70,70), Image.Resampling.LANCZOS) 
+res_step_backup_img = step_backup_img.resize((70,70), Image.Resampling.LANCZOS)
+res_step_complete_img = step_complete_img.resize((70,70), Image.Resampling.LANCZOS)
 
-res_step_home_img_inverted = step_home_img_inverted.resize((70,70), Image.LANCZOS)
-res_step_select_img_inverted = step_select_img_inverted.resize((70,70), Image.LANCZOS)
-res_step_progress_img_inverted = step_progress_img_inverted.resize((70,70), Image.LANCZOS)
-res_step_result_img_inverted = step_result_img_inverted.resize((70,70), Image.LANCZOS)
-res_step_backup_img_inverted = step_backup_img_inverted.resize((70,70), Image.LANCZOS)
-res_step_complete_img_inverted = step_complete_img_inverted.resize((70,70), Image.LANCZOS)
+res_step_home_img_inverted = step_home_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
+res_step_select_img_inverted = step_select_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
+res_step_progress_img_inverted = step_progress_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
+res_step_result_img_inverted = step_result_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
+res_step_backup_img_inverted = step_backup_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
+res_step_complete_img_inverted = step_complete_img_inverted.resize((70,70), Image.Resampling.LANCZOS)
 
 
 # 3. 실질적으로 사용하는 GUI 이미지 변환 (ImageTk.PhotoImage)
@@ -94,7 +94,7 @@ root.iconphoto(True, tk_step_home_img)
 #왼쪽 단계 표시 바
 frame_LeftBar = Frame(root, relief="solid",  width="2c", bg="#f0f2f7", highlightbackground="#cdd2e0", highlightthickness=1)
 frame_LeftBar.pack(side = "left",fill="y")
-frame_LeftBar.pack_propagate(0)
+frame_LeftBar.pack_propagate(False)
 label_step_img = Label(frame_LeftBar, image = tk_step_home_img, bg="#f0f2f7")
 label_step_img.pack()
 label_step_img2 = Label(frame_LeftBar, image = tk_step_select_img, bg="#f0f2f7")
@@ -110,8 +110,8 @@ label_step_img6.pack()
 
 #중앙 화면 메인 프레임
 frame_main = Frame(root, bg="#f0f2f7", highlightbackground="#cdd2e0", highlightthickness=1)
-frame_main.pack(side = "top",fill="both", expand="true")
-frame_main.pack_propagate(0) 
+frame_main.pack(side = "top",fill="both", expand=True)
+frame_main.pack_propagate(False) 
 
 
 #1번 홈 화면
@@ -130,7 +130,7 @@ frame_org_part.pack(side="left", fill="both", expand = True)
 
 label_original = Label(frame_org_part, text="원본폴더", bg="#f0f2f7")
 label_original.pack(pady= (80,10))
-btn_sel_org = Button(frame_org_part, text="백업폴더",image=tk_btn_org_img)
+btn_sel_org = Button(frame_org_part, text="대상폴더",image=tk_btn_org_img)
 btn_sel_org.pack()
 
 label_org_path = Label(frame_org_part, text="", wraplength=250, justify="center", bg="#f0f2f7")
@@ -139,17 +139,17 @@ label_org_path.pack(pady = (40,10))
 
 #중앙 화살표 위치
 frame_mid_part = Frame(frame_center_select, width="0.5c", relief="solid", bg="#f0f2f7") 
-frame_mid_part.pack(side = "left", fill="both", expand = "false")
-frame_mid_part.pack_propagate(0)
+frame_mid_part.pack(side = "left", fill="both", expand = False)
+frame_mid_part.pack_propagate(False)
 
-#백업폴더 선택
+#대상폴더 선택
 frame_tar_part = Frame(frame_center_select, relief="solid", bg="#f0f2f7") 
-frame_tar_part.pack(side="left", fill="both", expand = "true")
+frame_tar_part.pack(side="left", fill="both", expand = True)
 
-label_target = Label(frame_tar_part, text="백업폴더",bg="#f0f2f7")
+label_target = Label(frame_tar_part, text="대상폴더",bg="#f0f2f7")
 label_target.pack(pady= (80,10))
 
-btn_sel_target = Button(frame_tar_part, text="백업폴더", image=tk_btn_tar_img)
+btn_sel_target = Button(frame_tar_part, text="대상폴더", image=tk_btn_tar_img)
 btn_sel_target.pack()
 
 
@@ -164,8 +164,8 @@ frame_center_check = Frame(frame_main, relief="solid")
 
 #좌측 빠른검사 프레임
 frame_fast_check = Frame(frame_center_check, relief="solid", bg="#f0f2f7")
-frame_fast_check.pack(side = "left", fill="both", expand="true")
-frame_fast_check.pack_propagate(0) 
+frame_fast_check.pack(side = "left", fill="both", expand=True)
+frame_fast_check.pack_propagate(False) 
 
 
 label_fast_check = Label(frame_fast_check, text="빠른검사", bg="#f0f2f7")
@@ -179,8 +179,8 @@ btn_fast_sel.pack()
 
 #우측 정밀검사 프레임
 fram_detail = Frame(frame_center_check,  relief="solid", bg="#f0f2f7")
-fram_detail.pack(side = "right",  fill="both", expand="true")
-fram_detail.pack_propagate(0) 
+fram_detail.pack(side = "right",  fill="both", expand=True)
+fram_detail.pack_propagate(False) 
 
 label_det_check = Label(fram_detail, text="정밀검사", bg="#f0f2f7")
 label_det_check.pack(pady=(30, 10))
@@ -275,7 +275,7 @@ btn_result_refresh.pack(side="left")
 
 mid_result_scroll = Scrollbar(frame_mid_result)
 mid_result_scroll.pack(side="right", fill="y")
-mid_result_list = Listbox(frame_mid_result, selectmode="single", height=10, width="70", yscrollcommand=mid_result_scroll.set,relief = "solid", bd=1 )
+mid_result_list = Listbox(frame_mid_result, selectmode="single", height=10, width=70, yscrollcommand=mid_result_scroll.set,relief = "solid", bd=1 )
 mid_result_list.pack(fill="both", expand=True, padx=10, pady=(0,10))
 mid_result_scroll.config(command=mid_result_list.yview)
 
@@ -325,7 +325,7 @@ label_complete2.pack(anchor="w", padx="15")
 #하단 바
 frame_bottombar = Frame(root,bg="#F0F2F7", height = "1.5c", highlightbackground="#cdd2e0", highlightthickness=1)
 frame_bottombar.pack(side="bottom",fill="both")
-frame_bottombar.pack_propagate(0)
+frame_bottombar.pack_propagate(False)
 
 # 완료단계에서만 표시
 btn_optimize = Button(frame_bottombar, text= "최적화",  width="15", highlightbackground="#cdd2e0", highlightthickness=1)

@@ -130,6 +130,19 @@ def get_root_files_count(path):
     return res
 
  
+def get_root_dirs_count(path):
+    """ 
+    최상위 폴더에 들어있는 내용중에서 
+    폴더를 제외한 파일의 개수만 구한다.
+    """
+    res = 0
+
+    for root, dirs, files in os.walk(path):
+        res = len(dirs)
+        break
+
+    return res
+
 def add_file_num(fname, folder):
     """
     파일이 어떤 폴더에 이미 있으면

@@ -14,7 +14,7 @@ from system.aftercheck import aftercheck
 from system.compare import compare
 from system.constants import APPNAME, SUISEI_BLUE
 from system.backup import backup, boost
-from system.path import PREFIX_MAX_PATH, is_dest_in_src
+from system.path import PREFIX_MAX_PATH, get_root_dirs_count, is_dest_in_src
 
 
 # --- 각 화면 전환 함수 ---
@@ -90,10 +90,15 @@ def show_compare_result():
     else:
         update_result_listbox(res.files_rmv)
 
+    bool1 = len(res.dirs_rmv) == get_root_dirs_count(res.tar_path) 
+    bool2 = len(res.dirs_copy) == get_root_dirs_count(res.org_path) 
 
     switch_frame(frame_center_result)
     update_sidebar(3)
-        
+
+    if bool1 or bool2:
+        showerror("경고", "폴더 구조가 매우 다릅니다.\n폴더를 제대로 선택하셨는지 다시 한번 확인해주세요.")
+
 
 def show_backup():
     btn_begin.config(text="다음", state="disabled")
