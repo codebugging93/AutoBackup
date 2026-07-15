@@ -137,6 +137,10 @@ def show_complete():
 
 
 def show_aftercheck_result():
+    """ 
+    show_compare_result와 거의 동일하나,
+    첫줄의 compare_result가 failed_resut로 바뀌어있다.
+    """
     res = AppData.failed_result # 실패한것만 다시
     if res is None:
         showerror(APPNAME, "알 수 없는 오류가 발생하였습니다.")
@@ -170,6 +174,10 @@ def show_aftercheck_result():
         update_result_listbox(res.files_renew)
     else:
         update_result_listbox(res.files_rmv)
+
+    _org = res.org_path.removeprefix(PREFIX_MAX_PATH)
+    _tar = res.tar_path.removeprefix(PREFIX_MAX_PATH)
+    lable_expl_result.config(text=f"백업에 실패한 파일이 발견되었습니다.\n원본 폴더 : {_org}\n대상 폴더 : {_tar}")
 
     switch_frame(frame_center_result)
     update_sidebar(3)

@@ -6,6 +6,18 @@ from system.backup import backup
 
 a = r"e:\test_a"
 b = r"e:\test_b"
+# a = r"g:\Studying"
+# b = r"g:\Studying-백업본"
+# a = r"d:\WorkSpace\Downloading\Alarm\windows\flutter\ephemeral\.plugin_symlinks"
+# b = r"h:\WorkSpace\Downloading\Alarm\windows\flutter\ephemeral\.plugin_symlinks"
+# a = r"d:\Projects"
+# b = r"g:\Projects"
+a = r"d:\Projects"
+b = r"d:\ProjectsNew"
+
+
+
+# 시간을 단축하려면 os.stat 호출 횟수를 줄여야 한다.
 
 while True:
     t = time()

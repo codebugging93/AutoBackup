@@ -14,7 +14,6 @@ from gui.functions import root
     system/system_values.py에 클래스를 하나 만들어서 
     진행중인 시스템 함수의 변수를 클래스에 실시간으로 집어넣고,
     
-    gui/realtime_widgets.py 파일을 만들고
     gui의 값을 1초에 30번 갱신할 수 있도록
     system_values의 값을 1초에 30번씩 불러와서 update 시킨다.   
     * tick 변수를 두어 어떤 변수는 1초에 5번만 바뀌도록 속도 조절을 시킨다.
