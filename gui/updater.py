@@ -5,10 +5,10 @@ from system.SystemValues import SystemValues
 import gui.components as widgets
 from system.path import PREFIX_MAX_PATH
 
-summarize_str = lambda p: p.removeprefix(PREFIX_MAX_PATH) if len(p) <= 70 else p[:35] + "..." + p[-35:]
 
 class UiUpdater:
     running = False 
+    tick = 0
     
     @classmethod
     def update_loop(cls, func):
@@ -17,15 +17,15 @@ class UiUpdater:
         이 함수는 GUI의 메인 스레드를 방해하지 않도록 별도의 Thread에서 실행되어야 합니다.
         """
         cls.running = True 
-        tick = 0
+        cls.tick = 0
         while cls.running:
-            tick = (tick + 1) % 30  # 30Hz 주기로 tick 순환 (0~29)
+            cls.tick = (cls.tick + 1) % 30  # 30Hz 주기로 tick 순환 (0~29)
 
-            func(tick)
+            widgets.root.after(0, func)
 
             time.sleep(1 / 30)      # 약 0.033초 대기
 
-        func(tick) # 종료시 한번 더 업데이트
+        widgets.root.after(0, func) # 종료시 한번 더 업데이트
 
     @classmethod
     def start(cls, func):
@@ -38,7 +38,7 @@ class UiUpdater:
 
 
     @classmethod 
-    def update_compare(cls, tick):
+    def update_compare(cls):
         # 프로그레스바 
         widgets.top_progressbar.config(
             value=SystemValues.compare_progress_val, 
@@ -62,7 +62,7 @@ class UiUpdater:
 
 
     @classmethod 
-    def update_backup(cls, tick):
+    def update_backup(cls):
         # 프로그레스바 
         widgets.top_progressbar.config(
             value=SystemValues.backup_progress_val, 
@@ -125,3 +125,10 @@ def _get_time_str(time_delta):
     hours = total_hour 
     time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     return time_str
+
+
+
+def summarize_str(p):
+    p = p.removeprefix(PREFIX_MAX_PATH)
+    return p if len(p) <= 70 else p[:35] + "..." + p[-35:]
+
