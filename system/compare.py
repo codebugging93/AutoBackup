@@ -1,4 +1,5 @@
 import os
+from time import time
 
 from system.SystemValues import SystemValues
 from system.filecmp_modified import auto_set_filter, cmp_filter
@@ -18,13 +19,21 @@ class CompareResult:
     files_rmv: 삭제할 파일이 포함된 절대경로 리스트
     files_renew: 갱신할 파일이 포함된 절대경로 리스트
     files_same: 동일한 파일이 포함된 상대경로 리스트
+
+    optimized_count: files_same 중에서 빠른 검사만으로 판별된(최적화된) 파일 수
+    optimized_percent: 최적화된 파일의 비율(백분율)
+
+    최적화율을 SystemValues에 바로 쓰지 않고 이 결과 객체에 담는 이유는,
+    aftercheck()가 내부적으로 compare()를 여러 번 호출하기 때문이다.
+    전역에 바로 기록하면 그 중첩 호출들이 전체 검사 결과를 덮어써 버린다.
+    따라서 기록은 호출하는 쪽(상위 레벨)에서 담당한다.
     """
 
     def __init__(self):
         self.org_path = ""
         self.tar_path = ""
 
-        self.dirs_copy = [] 
+        self.dirs_copy = []
         self.dirs_rmv = []
         self.dirs_same = []
 
@@ -32,6 +41,12 @@ class CompareResult:
         self.files_rmv = []
         self.files_renew = []
         self.files_same = []
+
+        self.dirs_similarity = 0.0
+        self.files_similarity = 0.0
+
+        self.optimized_count = 0 # 나중에 optimized_files로 수정
+        self.optimized_percent = 0.0
 
 
     def print(self):
@@ -46,6 +61,10 @@ class CompareResult:
         print("삭제할 파일 수:", len(self.files_rmv))
         print("갱신할 파일 수:", len(self.files_renew))
         print("동일한 파일 수:", len(self.files_same))
+
+        print("폴더 유사도 :", self.dirs_similarity)
+        print("파일 유사도 :", self.files_similarity)
+        print("최적화율 :", self.optimized_percent)
 
 
     def is_empty(self):
@@ -74,7 +93,8 @@ def compare(org_path, tar_path, fast_scan=True):
     tar_path = norm_max_path(tar_path)
 
     # 복사/삭제할 폴더와 공통된 폴더를 구함 
-    result = compare_dirs(org_path, tar_path) # TODO 이것도 SystemValues 반영하면 좋겠음
+
+    result = compare_dirs(org_path, tar_path) # 이 result가 반환될 객체임
     result_files = compare_files(
         org_path, 
         tar_path, 
@@ -86,6 +106,14 @@ def compare(org_path, tar_path, fast_scan=True):
     result.files_rmv = result_files.files_rmv
     result.files_renew = result_files.files_renew
     result.files_same = result_files.files_same
+    result.files_similarity = result_files.files_similarity
+
+    # 최적화율 = (cmp_filter를 실행해서 올린 카운트) / (검사한 파일의 개수:files_same) * 100
+    result.optimized_count = SystemValues.optimized_count
+    if len(result.files_same) != 0:
+        result.optimized_percent = SystemValues.optimized_count / len(result.files_same) * 100
+    else:
+        result.optimized_percent = 0
 
     return result
 
@@ -100,30 +128,45 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
 
     dirs_same의 값 하나하나에 대해서 파일들을 비교하여 차이점을 저장하고,
     복사/갱신/삭제/공통 파일 리스트를 반환한다.
+
+    최적화된 파일의 개수를 측정하여 SystemValues.optimized_count에 저장한다.
     """
+    SystemValues.optimized_count = 0 # 최적화율 측정
+
     copy, renew, rmv, same = [], [], [], []
+
+    # 유사도 측정값 
+    universal_set_count = 0
+    intersection_set_count = 0
 
     # 작업할 파일의 개수를 세는 코드
     SystemValues.compare_progress_max = 0
+
+    # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
+    container = []
     for rel_path in dirs_same: 
         org_dir = merge_path(org_path, rel_path)
         tar_dir = merge_path(tar_path, rel_path)
         org_files = get_filename_set(org_dir)
         tar_files = get_filename_set(tar_dir)
         common_names = org_files & tar_files
+        # 다음 루프를 위해 저장
+        container.append((rel_path, org_dir, tar_dir, org_files, tar_files, common_names)) 
+
         SystemValues.compare_progress_max += len(common_names)
+        universal_set_count += len(org_files) + len(tar_files) # 교집합 성분인 result.files_same은 나중에 뺌
     
-    SystemValues.optimized_count = 0 # 최적화율 측정
-    # dirs_same은 depth가 오름차순이 되도록 정렬되어 있다고 상정한다.
-    for rel_path in dirs_same: # rel_path: 상대경로
+    for values in container:
+        rel_path = values[0] # rel_path: 상대경로
+
         # 원본과 사본에 동시에 존재하는 폴더의 절대경로
-        org_dir = merge_path(org_path, rel_path)
-        tar_dir = merge_path(tar_path, rel_path)
+        org_dir = values[1]
+        tar_dir = values[2]
 
         # 이름이 같은 파일을 추출함
-        org_files = get_filename_set(org_dir)
-        tar_files = get_filename_set(tar_dir)
-        common_names = org_files & tar_files
+        org_files = values[3]
+        tar_files = values[4]
+        common_names = values[5]
 
         # 이름이 동일하면서 내용까지 동일한지 검사함
         for fname in common_names:
@@ -131,7 +174,6 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
             file1 = os.path.join(org_dir, fname)
             file2 = os.path.join(tar_dir, fname)
             SystemValues.compare_progress_path = os.path.join(rel_path, fname)
-        
 
             # 비교
             if cmp_filter(file1, file2, fast_scan): # 내용이 동일하면 같은 파일
@@ -153,20 +195,27 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
             fpath = os.path.join(tar_dir, fname) # 삭제할 파일은 타겟에 존재함
             rmv.append(fpath) # 절대 경로로 저장
 
-    # 최적화율 계산
-    SystemValues.optimized_percent = SystemValues.optimized_count / len(same) * 100 
-    
+
     result = CompareResult()
     result.org_path = org_path
     result.tar_path = tar_path
     result.files_copy = copy
     result.files_renew = renew
-    result.files_rmv = rmv 
+    result.files_rmv = rmv
     result.files_same = same
+
+
+    intersection_set_count = len(same)
+    universal_set_count -= intersection_set_count
+    if universal_set_count != 0:
+        result.files_similarity = intersection_set_count / universal_set_count * 100
+    else:
+        result.files_similarity = 0.0
     return result
 
 
 def compare_dirs(org_path, tar_path):
+    # TODO 이것도 SystemValues 반영하면 좋겠음 은근 오래걸리는 작업임
 
     """
     두 폴더를 비교하여 다음 결과를 반환한다.
@@ -182,11 +231,15 @@ def compare_dirs(org_path, tar_path):
     # sametree = DepthList()  # 리턴값
     # sametree[0].add("")  # 현재 폴더 추가
 
+    # 유사도 측정값 
+    universal_set_count = 0
+    intersection_set_count = 0
+
     # 리턴값 3개
     copy = []
     rmv = []
     same = [""] # 루트 폴더를 의미하는 공백 경로를 넣었다.
-                # '.'이 아니라 공백인 이유는, same에 들어갈 경로들이 모두 상대 경로이기 때문이다.
+                # '.'이 아니라 공백인 이유는, 현재 폴더를 기준으로 하는것이 아니기 때문이다.
 
     next_scan = [""] # 검사해야할 폴더이며, 루트 폴더를 의미하는 ""를 추가하였음
     while len(next_scan) > 0:  # 같은 폴더 산출
@@ -195,8 +248,10 @@ def compare_dirs(org_path, tar_path):
         path2 = os.path.join(tar_path, folder) # 절대경로
 
         a = get_dirname_set(path1)
-        b = get_dirname_set(path2)
+        b = get_dirname_set(path2) 
         s = a & b
+        intersection_set_count += len(s)
+        universal_set_count += len(a) + len(b) - len(s)
 
         # 복사할 폴더 a - s 
         for i in (a - s):
@@ -220,6 +275,11 @@ def compare_dirs(org_path, tar_path):
     result.dirs_copy = copy
     result.dirs_rmv = rmv 
     result.dirs_same = same
+
+    if universal_set_count != 0:
+        result.dirs_similarity = intersection_set_count / universal_set_count * 100
+    else:
+        result.dirs_similarity = 0.0
     return result
 
 
