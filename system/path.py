@@ -83,37 +83,35 @@ def merge_path(*paths):
 # print(merge_path(o, cut)) # 원상복귀됨
 
     
-def get_filename_set(path) -> set: 
+def get_filename_set(path):
     """
-    os.listdir와 비슷하게, path 내의 파일 이름을 모아서 주는 함수
+    os.listdir(path)에서 파일만 반환한다.
     """
-    
-    path = os.path.normpath(path)
-    return_files = set()
-    
-    for root, dirs, files in os.walk(path):
-        return_files = set(files)
-        break
-            
-    return return_files
+    with os.scandir(path) as iterator:
+        return {entry.name for entry in iterator if entry.is_file(follow_symlinks=False)}
+        # entry.name은 파일의 이름을 의미함
+        # follow_symlinks가 False이므로 심링크는 제외됨
     
 
-def get_dirname_set(path): 
-    """ 
-    os.listdir에서 폴더만 반환한다.
+def get_dirname_set(path):
     """
-    
-    path = os.path.normpath(path)
-    return_dirs = set()
-    
-    for root, dirs, files in os.walk(path):
-        for i in dirs:
-            p = os.path.join(root, i)
-            if not os.path.islink(p):
-                return_dirs.add(i)
-        break    
-        
-    return return_dirs
+    os.listdir(path)에서 폴더만 반환한다.
+    """
+    with os.scandir(path) as iterator: 
+        return {entry.name for entry in iterator if entry.is_dir(follow_symlinks=False)} 
+        # entry.name은 폴더의 이름을 의미함
+        # follow_symlinks가 False이므로 링크 파일은 제외됨
+
+
+def get_symlink_set(path): # AI로 만들고, 검수는 하지 않았음
+    """
+    os.listdir(path)에서 심링크만 반환한다.
+    """
+    with os.scandir(path) as iterator:
+        return {entry.name for entry in iterator if entry.is_symlink()}
+        # is_symlink()에는 follow_symlinks 인자가 없음 (링크 자체만 보는 검사라 불필요)
+
+# (위 세 함수를 실행한 것의 합집합) == set(os.listdir(path)) 가 성립함
 
 
 def get_root_files_count(path):
