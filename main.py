@@ -1,4 +1,5 @@
-from gui.functions import root 
+import sys
+from gui.functions import app, root
 
 # UI 요소와 버튼 클릭 요소는 분리하여 진행함 
 # Home_Layout 파일을 components.py로 바꾸고
@@ -30,5 +31,6 @@ from gui.functions import root
 
 
 
-root.mainloop()
 
+root.show()
+sys.exit(app.exec())
