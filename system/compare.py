@@ -154,7 +154,11 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
         container.append((rel_path, org_dir, tar_dir, org_files, tar_files, common_names)) 
 
         SystemValues.compare_progress_max += len(common_names)
-        universal_set_count += len(org_files) + len(tar_files) # 교집합 성분인 result.files_same은 나중에 뺌
+        # 유사도는 compare_dirs와 동일하게 이름 기준 자카드로 잰다.
+        # 이름이 같으면 내용이 달라도(=갱신할 파일) 양쪽에 대응하는 파일이 있다는 뜻이므로 교집합으로 친다.
+        # (files_same만 세면 갱신할 파일이 분모에 두 번 남아 수치가 낮게 나온다.)
+        intersection_set_count += len(common_names)
+        universal_set_count += len(org_files) + len(tar_files) - len(common_names)
     
     for values in container:
         rel_path = values[0] # rel_path: 상대경로
@@ -205,8 +209,6 @@ def compare_files(org_path, tar_path, dirs_same: list, fast_scan=True):
     result.files_same = same
 
 
-    intersection_set_count = len(same)
-    universal_set_count -= intersection_set_count
     if universal_set_count != 0:
         result.files_similarity = intersection_set_count / universal_set_count * 100
     else:
