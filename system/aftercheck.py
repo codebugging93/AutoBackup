@@ -5,7 +5,7 @@ from system.SystemValues import SystemValues
 from system.compare import CompareResult, compare
 from system.depth import get_depth
 from system.path import cut_path
-from system.filecmp_modified import cmp_filter
+from system.filecmp_modified import cmp_shallow, do_cmp
 
 
 def aftercheck(compare_result: CompareResult, fast_scan=True):
@@ -118,8 +118,19 @@ def aftercheck_files_copy(org_path, tar_path, files: list, fast_scan=True):
         SystemValues.backup_progress_path = src
 
         try: 
-            if not cmp_filter(src, dst, fast_scan):
-                # 파일이 있는데 일치하지 않을 때는 갱신해야함
+            # 1단계: 크기와 수정시간만으로 빠르게 판정을 시도한다.
+            is_same = None
+            if fast_scan:
+                is_same = cmp_shallow(os.stat(src), os.stat(dst))
+                if is_same:
+                    SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
+
+            # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
+            if is_same == None:
+                is_same = do_cmp(src, dst)
+
+            # 같지 않으면 갱신해야함
+            if not is_same:
                 failed.files_renew.append(dst)
         except FileNotFoundError:
             # 파일이 없을 때는 복사해야함 
@@ -138,14 +149,27 @@ def aftercheck_files_renew(org_path, tar_path, files: list, fast_scan=True):
     SystemValues.backup_progress_val = 0
     SystemValues.backup_progress_max = len(files)
 
+    # 여기서부터 
     for dst in files:
         cut = cut_path(dst, get_depth(tar_path))
         src = os.path.join(org_path, cut)
         SystemValues.backup_progress_path = cut
+        # 여기까지가 aftercheck_files_copy와 다른 부분
 
         try: 
-            if not cmp_filter(src, dst, fast_scan):
-                # 파일이 있는데 일치하지 않을 때는 갱신해야함
+            # 1단계: 크기와 수정시간만으로 빠르게 판정을 시도한다.
+            is_same = None
+            if fast_scan:
+                is_same = cmp_shallow(os.stat(src), os.stat(dst))
+                if is_same:
+                    SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
+
+            # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
+            if is_same == None:
+                is_same = do_cmp(src, dst)
+
+            # 같지 않으면 갱신해야함
+            if not is_same:
                 failed.files_renew.append(dst)
         except FileNotFoundError:
             # 파일이 없을 때는 복사해야함 

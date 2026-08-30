@@ -5,7 +5,6 @@ from pathlib import Path
 from system.depth import DepthError, get_depth, split_path
 
 
-
 PREFIX_MAX_PATH = "\\\\?\\"
 
 
@@ -114,6 +113,76 @@ def get_symlink_set(path): # AI로 만들고, 검수는 하지 않았음
 # (위 세 함수를 실행한 것의 합집합) == set(os.listdir(path)) 가 성립함
 
 
+
+class ListdirSplitResult:
+    """
+    get_listdir_split의 반환값. path 안의 내용물을 종류별로 나눠 담는다.
+
+    네 개 모두 "이름 -> DirEntry" 형태의 dict이다.
+    집합이 아니라 dict인 이유는 이름으로 교집합을 구하면서
+    엔트리도 같이 들고 있기 위해서이다. get_listdir_split의 설명을 참고하라.
+    """
+
+    def __init__(self, path):
+        self.path = path # 절대경로
+        self.files: dict[str, os.DirEntry] = dict() # 파일 이름:엔트리 쌍
+        self.dirs: dict[str, os.DirEntry] = dict() # 폴더 이름:엔트리 쌍
+        self.links: dict[str, os.DirEntry] = dict() # 링크 이름:엔트리 쌍
+        self.unknowns: dict[str, os.DirEntry] = dict() # 파일, 폴더, 링크도 아닌 것들 (처리 곤란)
+
+
+def get_listdir_split(path) -> ListdirSplitResult:
+    """
+    os.listdir과 비슷한 동작을 하지만 속도가 훨 빠르다.
+    경고: path는 절대경로여야만 한다.
+
+    path 안의 내용물을 파일/폴더/링크/그 외로 나눠서 ListdirSplitResult에 담아 반환한다.
+    네 항목 모두 "이름 -> DirEntry" 형태의 dict이다.
+
+        files    : 정규 파일
+        dirs     : 폴더
+        links    : 심볼릭 링크 (파일인지 폴더인지 따지지 않고 먼저 걸러낸다)
+        unknowns : 위 셋 중 어느 것도 아닌 것 (처리 곤란)
+
+    이름만 담지 않고 엔트리까지 들고 있는 이유:
+        os.scandir는 폴더를 훑을 때 이름뿐 아니라 크기와 수정시간까지 함께 받아오고,
+        DirEntry가 그 값을 들고 있다. 그래서 entry.stat()이 시스템 콜 없이 값을 돌려주고,
+        entry.path로 전체 경로도 바로 얻을 수 있다.(윈도우 기준)
+        엔트리를 버리고 이름만 남기면 나중에 파일마다 os.stat을 다시 불러야 하는데,
+        그 비용이 stat이 느린 외장 드라이브에서 특히 크다.
+
+    dict인 이유:
+        DirEntry는 __eq__/__hash__를 정의하지 않아 동일성 기준으로 해시된다.
+        그래서 엔트리를 집합에 담으면 다른 폴더의 같은 이름끼리 교집합이 잡히지 않는다.
+        dict로 두면 dict.keys()가 집합처럼 동작하므로 이름으로 교집합/차집합을 구하고,
+        그 이름으로 양쪽 엔트리를 각각 꺼내 쓸 수 있다.
+
+            common = org.files.keys() & tar.files.keys()
+            org_entry = org.files[name]
+            tar_entry = tar.files[name]
+
+        주의: dict끼리는 & 나 - 가 되지 않으므로 반드시 keys()를 거쳐야 한다.
+
+    주의: 엔트리가 들고 있는 크기/수정시간은 이 함수를 실행한 시점의 값이다.
+        그 뒤에 파일이 바뀌어도 반영되지 않는다.
+    """
+
+    result = ListdirSplitResult(path)
+
+    with os.scandir(path) as iterator:
+        for entry in iterator:
+            if entry.is_symlink():
+                result.links[entry.name] = entry
+            elif entry.is_file(follow_symlinks=False): 
+                result.files[entry.name] = entry
+            elif entry.is_dir(follow_symlinks=False):
+                result.dirs[entry.name] = entry
+            else:
+                result.unknowns[entry.name] = entry
+
+    return result
+
+
 def get_root_files_count(path):
     """ 
     최상위 폴더에 들어있는 내용중에서 
@@ -168,57 +237,6 @@ def add_dir_num(path, folder):
     """
     return add_file_num(path, folder)
 
-
-
-#####################
-# 다소 무거운 작업들 
-#####################
-
-# def get_path_info(path) -> tuple[DepthList, int, int]:
-#     """
-#     depthlist, 폴더 수, 파일 수 를 한번에 구하는 함수
-
-#     counter.num1을 사용한다.
-#     """
-#     path = os.path.normpath(path)
-#     path_depth = get_depth(path)
-
-#     dlist = DepthList()
-#     files = 0
-#     folders = 0
-
-#     # counter.num1 = 0
-#     for root, dirs, _files in os.walk(path):
-#         cut = cut_path(root, path_depth) # 처음 주어진 path의 depth만큼 경로를 자름
-#         dlist.add(cut) # dlist[0]에는 처음에 빈 문자열이 들어간다. root에서 root만큼 잘라냈기 때문이다. 나중에 merge_path로 합칠 수 있으니 이상현상이 아님을 알린다.
-        
-#         files += len(_files)
-#         folders += 1
-#         # counter.num1 = folders 
-#         # UI가 읽을 값
-
-#     return dlist, folders, files
-
-
-# def get_relpath_dlist(path) -> DepthList:
-#     """
-#     path에서부터 하위 폴더를 탐색하여
-#     상대 경로(relative path, 줄여서 relpath)가 들어있는 DepthList를 반환한다.
-
-#     counter.num1을 사용한다.
-#     """
-
-#     path = os.path.normpath(path)
-#     path_depth = get_depth(path)
-#     dlist = DepthList()
-
-#     # counter.num1 = 0
-#     for root, dirs, files in os.walk(path):
-#         cut = cut_path(root, path_depth) 
-#         dlist.add(cut) 
-#         # counter.num1 += 1
-
-#     return dlist
 
 
 def get_files_relpath(path) -> list:

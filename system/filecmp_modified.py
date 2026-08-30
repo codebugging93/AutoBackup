@@ -7,7 +7,8 @@
 
 
 __all__ = [
-    "cmp_filter",
+    "cmp_shallow",
+    "do_cmp",
     "auto_set_filter",
 ]
 
@@ -56,7 +57,7 @@ def cmp(f1, f2, shallow=True):
         return False
     outcome = _cache.get((f1, f2, s1, s2))
     if outcome is None:
-        outcome = _do_cmp(f1, f2)
+        outcome = do_cmp(f1, f2)
         if len(_cache) > 100:      # limit the maximum size of the cache
             clear_cache()
         _cache[f1, f2, s1, s2] = outcome
@@ -69,7 +70,7 @@ def _sig(st):
             st.st_mtime)
 
 
-def _do_cmp(f1, f2):
+def do_cmp(f1, f2):
     bufsize = BUFSIZE
     with open(f1, 'rb') as fp1, open(f2, 'rb') as fp2:
         while True:
@@ -90,14 +91,13 @@ def clear_cache():
 ############################################
 
 
-def cmp_filter(f1, f2, shallow=True): 
+def cmp_shallow(stat1, stat2): 
     """
     중요: auto_set_filter()를 실행해서 필터를 정해주고 이 함수를 실행해야 한다.
 
-    f1을 원본 파일로, f2를 대상 파일로 간주하여 비교한다.
-    f1의 수정된 시간에 필터를 적용시켜 f2와 빠른 비교를 한다.
-
-    shallow가 True일때 얕은 비교, 즉 빠른 검사를 수행한다.
+    stat1은 원본 파일의 os.stat 실행값이며 
+    stat2는 대상 파일의 os.stat 실행값으로 간주하여 비교한다.
+    stat1의 수정된 시간에 필터를 적용시켜 stat2와 빠른 비교를 한다.
 
     검사가 빨리 끝나려면 파일의 용량과 수정된 시간이 일치해야 한다.
     그런데 똑같은 파일을 복사해도 드라이브/운영체제마다 수정된 시간이 정확히 기록되지 않는다.
@@ -111,36 +111,23 @@ def cmp_filter(f1, f2, shallow=True):
     원본 파일 f1의 수정된 시간을 2초 반올림 시키거나, 소수점을 없애거나 하는 등의 필터를 적용시킨다.
     이렇게 일치시키면 정확도는 다소 떨어질 수 있지만 그래도 검사가 빨리 끝난다.
     """
-
-    s1 = _sig_filter(os.stat(f1))
-    s2 = _sig(os.stat(f2))
+    s1 = _sig_filter(stat1)
+    s2 = _sig(stat2)
     if s1[0] != stat.S_IFREG or s2[0] != stat.S_IFREG:
         return False
-    if shallow and s1 == s2:
-        SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
+    if s1 == s2:
         return True
     if s1[1] != s2[1]:
         return False
-    outcome = _cache.get((f1, f2, s1, s2))
-    if outcome is None:
-        outcome = _do_cmp(f1, f2)
-        if len(_cache) > 100:      # limit the maximum size of the cache
-            clear_cache()
-        _cache[f1, f2, s1, s2] = outcome
-    return outcome
-    
 
+    return None
+    
 
 def _sig_filter(st):
     global _filter # auto_set_filter로 정해진 필터 사용
     return (stat.S_IFMT(st.st_mode),
             st.st_size,
             _filter(st.st_mtime)) # 바뀔 수 있음
-
-
-def _get_filter():
-    global _filter
-    return _filter
 
 
 def auto_set_filter(target_dir):
