@@ -126,7 +126,7 @@ def aftercheck_files_copy(org_path, tar_path, files: list, fast_scan=True):
                     SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
 
             # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
-            if is_same == None:
+            if is_same is None:
                 is_same = do_cmp(src, dst)
 
             # 같지 않으면 갱신해야함
@@ -165,7 +165,7 @@ def aftercheck_files_renew(org_path, tar_path, files: list, fast_scan=True):
                     SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
 
             # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
-            if is_same == None:
+            if is_same is None:
                 is_same = do_cmp(src, dst)
 
             # 같지 않으면 갱신해야함
