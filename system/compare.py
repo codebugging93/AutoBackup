@@ -1,5 +1,4 @@
 import os
-from time import time
 
 from system.SystemValues import SystemValues
 from system.filecmp_modified import auto_set_filter, cmp_shallow, do_cmp
@@ -27,13 +26,7 @@ class CompareResult:
     (양쪽 모두 하위 폴더가 없거나, 공통 폴더 안에 파일이 하나도 없는 경우)
     겹치는 것이 없어서 0%인 것과 셀 대상 자체가 없는 것은 다른 상황이므로 구분한다.
 
-    optimized_count: files_same 중에서 빠른 검사만으로 판별된(최적화된) 파일 수
     optimized_percent: 최적화된 파일의 비율(백분율)
-
-    최적화율을 SystemValues에 바로 쓰지 않고 이 결과 객체에 담는 이유는,
-    aftercheck()가 내부적으로 compare()를 여러 번 호출하기 때문이다.
-    전역에 바로 기록하면 그 중첩 호출들이 전체 검사 결과를 덮어써 버린다.
-    따라서 기록은 호출하는 쪽(상위 레벨)에서 담당한다.
     """
 
     def __init__(self):
@@ -255,8 +248,6 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
     동일한 파일만 상대경로이고 나머지 셋은 절대경로이다.
 
     최적화된 파일의 개수를 측정하여 SystemValues.optimized_count에 저장한다.
-    (cmp_shallow가 빠르게 True를 반환할 때마다 그 안에서 1씩 올라간다.
-     따라서 정밀검사에서는 최적화율이 잡히지 않는다.)
     """
     SystemValues.optimized_count = 0 # 최적화율 측정
 
@@ -290,7 +281,7 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
                     SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
 
             # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
-            if is_same == None:
+            if is_same is None:
                 is_same = do_cmp(org_entry.path, tar_entry.path)
 
             if is_same: # 내용이 동일하면 같은 파일

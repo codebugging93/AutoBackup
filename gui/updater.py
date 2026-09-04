@@ -18,7 +18,7 @@ import gui.components as widgets
 from system.path import PREFIX_MAX_PATH
 from system.SystemValues import SystemValues
 
-_TICK_INTERVAL_MS = 1000 // 30  # 30Hz
+_TICK_INTERVAL_MS = 1000 // 60  # 60Hz
 
 
 class _UpdateThread(QThread):

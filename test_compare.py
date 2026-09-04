@@ -1,5 +1,4 @@
 from time import time
-from system.aftercheck import aftercheck, aftercheck_dirs_rmv, aftercheck_files_renew, aftercheck_files_rmv, aftercheck_files_copy
 from system.compare import compare
 from system.backup import backup
 
@@ -26,11 +25,8 @@ while True:
 
     # backup(result)
 
-    failed = aftercheck(result)
-
     input("백업 완료")
     
-    backup(failed)
 
 
 
