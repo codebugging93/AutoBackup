@@ -70,6 +70,8 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     files_rmv.extend(result.files_rmv)
     files_renew.extend(result.files_renew)
 
+    SystemValues.backup_progress_msg = "재검사 완료"
+
     # 최종적으로 리스트 대입
     failed_result = CompareResult()
     failed_result.org_path = compare_result.org_path
