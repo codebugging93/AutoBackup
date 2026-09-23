@@ -9,17 +9,20 @@ from system.path import cut_path, merge_path
 def copy_file(src, dst, mkdirs=True, metadata=True):
     """
     src, dst는 절대경로를 받는다.
+    dst에 이미 파일이 있는 경우 FileExistsError를 발생시킨다.
 
     mkdirs: 어떤 파일이 속할 폴더를 자동 생성하는 기능
-    metadata: 파일의 메타데이터까지 복사하는 기능(수정된 시간 포함)
-
-    권한이 없는 경우 metadata는 복사되지 않을 수 있다.
-    가능한 한 chmod 권한까지 복사하려고 하기 때문이다.
+    metadata: 파일의 메타데이터까지 복사하는 기능(수정된 시간 포함)     
+    
+    metadata는 shutil.copystat을 호출하며, 권한까지 복사하려고 try해본다.
+    권한 복사 실패시 pass된다.
     """
 
+    if os.path.exists(dst):
+        raise FileExistsError(f"이미 파일이 존재합니다: {dst}")
+
     if mkdirs:
-        _dir = os.path.dirname(dst)
-        os.makedirs(_dir, exist_ok=mkdirs)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
 
     shutil.copyfile(src, dst, follow_symlinks=False) # 파일 복사
     if metadata:
@@ -32,14 +35,18 @@ def copy_file(src, dst, mkdirs=True, metadata=True):
 
 def move_file(src, dst, mkdirs=True, metadata=True):
     """
-    copy_file(src, dst)로 파일을 복사하고
-    src 파일을 os.remove로 삭제한다.
+    src 파일을 dst로 옮긴다.
+
+    같은 드라이브 내라면 os.rename으로 옮기고(이게 더욱 빠름),
+    다른 드라이브라면 copy_file(src, dst)로 파일을 복사하고 src 파일을 os.remove로 삭제한다.
     """
-    try: # 같은 드라이브 내에서는 이게 더욱 빠름
-        _dir = os.path.dirname(dst)
-        os.makedirs(_dir, exist_ok=mkdirs)
+    # 같은 드라이브라면 os.rename으로 빠르게 옮김 
+    if os.path.splitdrive(src)[0].lower() == os.path.splitdrive(dst)[0].lower():
+        if mkdirs:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
         os.rename(src, dst)
-    except OSError:
+    # 다른 드라이브라면 copy_file을 호출함
+    else:
         copy_file(src, dst, mkdirs=mkdirs, metadata=metadata)
         os.remove(src)
 
@@ -63,13 +70,20 @@ def copy_dir(src, dst, metadata=True):
         dst_dir = merge_path(dst, cut) # 복사 목적지 경로
         # src의 내부 폴더 src_dir을 dst의 내부 폴더 dst_dir로 복사함
 
-        os.makedirs(dst_dir, exist_ok=True) # 폴더 생성
+        try: # 폴더 생성 시도
+            os.makedirs(dst_dir, exist_ok=True) 
+        except OSError: # 실패시 복사 자체를 스킵
+            SystemValues.copy_progress_val += len(files) # 건너뛴 파일에도 진행률 반영
+            continue 
 
         for name in files:
             src_file = merge_path(src_dir, name)
             dst_file = merge_path(dst_dir, name)
             SystemValues.copy_progress_path = src_file
-            copy_file(src_file, dst_file, metadata=metadata)
+            try:
+                copy_file(src_file, dst_file, metadata=metadata)
+            except OSError:
+                pass # 실패한 파일은 건너뛰고 폴더의 나머지 파일을 계속 복사함
             SystemValues.copy_progress_val += 1
 
 
