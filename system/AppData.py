@@ -9,6 +9,7 @@ class AppData:
     compare_result = CompareResult()
     compare_run_time = 0.0
     backup_run_time = 0.0
+    backup_success = False
     # failed_result = CompareResult()
 
     
@@ -17,4 +18,5 @@ def reset_appdata():
     AppData.compare_result = CompareResult()
     AppData.compare_run_time = 0.0
     AppData.backup_run_time = 0.0
+    AppData.backup_success = False
     # AppData.failed_result = CompareResult()

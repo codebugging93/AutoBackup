@@ -54,6 +54,10 @@ def _icon(path: str, size: int) -> QPixmap:
     )
 
 
+def get_image(image_name:str):
+    return os.path.join("image", image_name)
+
+
 # --- QApplication / 메인 윈도우 ---
 app = QApplication.instance()
 if app is None:
@@ -63,8 +67,8 @@ root = QWidget()
 root.setWindowTitle(APPNAME)
 root.setFixedSize(900, 600)
 root.move(220, 40)
-if os.path.exists(r"image\logo.ico"):
-    root.setWindowIcon(QIcon(r"image\logo.ico"))
+if os.path.exists(get_image("logo.ico")):
+    root.setWindowIcon(QIcon(get_image("logo.ico")))
 
 root.setStyleSheet(f"""
 QWidget {{
@@ -160,6 +164,11 @@ QProgressBar::chunk {{
     font-size: 22px;
     font-weight: 700;
 }}
+#DriveLabel {{
+    color: {COLOR_BLUE};
+    font-size: 14px;
+    font-weight: 700;
+}}
 """)
 
 
@@ -167,24 +176,24 @@ QProgressBar::chunk {{
 _STEP_ICON_SIZE = 70
 
 # 현재 단계가 아닐시 사용하는 이미지 (흰색/무채색 배경)
-tk_step_home_img = _icon(r"image\step-1.png", _STEP_ICON_SIZE)
-tk_step_select_img = _icon(r"image\step-2.png", _STEP_ICON_SIZE)
-tk_step_progress_img = _icon(r"image\step-3.png", _STEP_ICON_SIZE)
-tk_step_result_img = _icon(r"image\step-4.png", _STEP_ICON_SIZE)
-tk_step_backup_img = _icon(r"image\step-5.png", _STEP_ICON_SIZE)
-tk_step_complete_img = _icon(r"image\step-6.png", _STEP_ICON_SIZE)
+tk_step_home_img = _icon(get_image("step-1.png"), _STEP_ICON_SIZE)
+tk_step_select_img = _icon(get_image("step-2.png"), _STEP_ICON_SIZE)
+tk_step_progress_img = _icon(get_image("step-3.png"), _STEP_ICON_SIZE)
+tk_step_result_img = _icon(get_image("step-4.png"), _STEP_ICON_SIZE)
+tk_step_backup_img = _icon(get_image("step-5.png"), _STEP_ICON_SIZE)
+tk_step_complete_img = _icon(get_image("step-6.png"), _STEP_ICON_SIZE)
 
 # _inverted 붙은거는 현재 단계에 사용하는 이미지 (블루 배경)
-tk_step_home_img_inverted = _icon(r"image\step1.png", _STEP_ICON_SIZE)
-tk_step_select_img_inverted = _icon(r"image\step2.png", _STEP_ICON_SIZE)
-tk_step_progress_img_inverted = _icon(r"image\step3.png", _STEP_ICON_SIZE)
-tk_step_result_img_inverted = _icon(r"image\step4.png", _STEP_ICON_SIZE)
-tk_step_backup_img_inverted = _icon(r"image\step5.png", _STEP_ICON_SIZE)
-tk_step_complete_img_inverted = _icon(r"image\step6.png", _STEP_ICON_SIZE)
+tk_step_home_img_inverted = _icon(get_image("step1.png"), _STEP_ICON_SIZE)
+tk_step_select_img_inverted = _icon(get_image("step2.png"), _STEP_ICON_SIZE)
+tk_step_progress_img_inverted = _icon(get_image("step3.png"), _STEP_ICON_SIZE)
+tk_step_result_img_inverted = _icon(get_image("step4.png"), _STEP_ICON_SIZE)
+tk_step_backup_img_inverted = _icon(get_image("step5.png"), _STEP_ICON_SIZE)
+tk_step_complete_img_inverted = _icon(get_image("step6.png"), _STEP_ICON_SIZE)
 
 # 폴더 선택 버튼용 아이콘
-tk_btn_org_img = _icon(r"image\original_folder.png", 160)
-tk_btn_tar_img = _icon(r"image\target_folder.png", 160)
+tk_btn_org_img = _icon(get_image("original_folder.png"), 160)
+tk_btn_tar_img = _icon(get_image("target_folder.png"), 160)
 
 
 # --- 전체 레이아웃 뼈대: [세로] 본문(가로: 좌측바 + 메인영역) / 하단바 ---
@@ -260,17 +269,30 @@ frame_main.addWidget(frame_center_home)
 
 
 # --- 2번 폴더선택 화면 ---
+# 원본/대상 두 열의 [제목 - 아이콘 - 장치 - 경로]가 항상 같은 높이에 오도록 격자로 배치한다.
+# 열마다 따로 세로 가운데 정렬을 하면, 경로가 길어 줄바꿈된 쪽만 위로 밀려 좌우가 어긋난다.
 frame_center_select = QWidget()
-_select_layout = QHBoxLayout(frame_center_select)
+_select_layout = QGridLayout(frame_center_select)
 _select_layout.setContentsMargins(40, 30, 40, 30)
-_select_layout.setSpacing(20)
+_select_layout.setHorizontalSpacing(20)
+_select_layout.setVerticalSpacing(14)
+
+# 열: 원본 / 화살표 / 대상
+_SEL_COL_ORG = 0
+_SEL_COL_ARROW = 1
+_SEL_COL_TAR = 2
+_select_layout.setColumnStretch(_SEL_COL_ORG, 1)
+_select_layout.setColumnStretch(_SEL_COL_TAR, 1)
+
+# 행: 0과 5는 여백. 내용(1~4행)이 세로 가운데에 오도록 위아래로 남는 공간을 나눠 가진다.
+_SEL_ROW_TITLE = 1
+_SEL_ROW_BUTTON = 2
+_SEL_ROW_DRIVE = 3
+_SEL_ROW_PATH = 4
+_select_layout.setRowStretch(0, 1)
+_select_layout.setRowStretch(5, 1)
 
 # 원본폴더 선택
-frame_org_part = QWidget()
-_org_layout = QVBoxLayout(frame_org_part)
-_org_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-_org_layout.setSpacing(14)
-
 label_original = QLabel("원본폴더")
 label_original.setObjectName("HeaderLabel")
 label_original.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -282,31 +304,41 @@ btn_sel_org.setIconSize(QSize(140, 140))
 btn_sel_org.setFixedSize(190, 190)
 btn_sel_org.setCursor(Qt.CursorShape.PointingHandCursor)
 
+# 선택한 폴더가 어느 장치에 있는지 한 줄로 알려준다. ("USB(내 USB)" 등)
+# 폴더를 고르기 전에도 자리를 차지하도록 높이를 고정해서 레이아웃이 흔들리지 않게 한다.
+label_org_drive = QLabel("")
+label_org_drive.setObjectName("DriveLabel")
+label_org_drive.setAlignment(Qt.AlignmentFlag.AlignCenter)
+label_org_drive.setFixedWidth(260)
+label_org_drive.setFixedHeight(20)
+
 label_org_path = QLabel("")
 label_org_path.setObjectName("SubLabel")
 label_org_path.setWordWrap(True)
 label_org_path.setAlignment(Qt.AlignmentFlag.AlignCenter)
 label_org_path.setFixedWidth(260)
 
-_org_layout.addWidget(label_original)
-_org_layout.addWidget(btn_sel_org, alignment=Qt.AlignmentFlag.AlignHCenter)
-_org_layout.addWidget(label_org_path)
+# 경로는 위에서부터 채워야 한쪽만 길어져도 좌우 시작 높이가 같다.
+_PATH_ALIGN = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
 
-_select_layout.addWidget(frame_org_part, 1)
+_select_layout.addWidget(label_original, _SEL_ROW_TITLE, _SEL_COL_ORG, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(btn_sel_org, _SEL_ROW_BUTTON, _SEL_COL_ORG, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(label_org_drive, _SEL_ROW_DRIVE, _SEL_COL_ORG, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(label_org_path, _SEL_ROW_PATH, _SEL_COL_ORG, _PATH_ALIGN)
 
-# 중앙 화살표 위치
+# 중앙 화살표. 네 행에 걸쳐 놓고 그 안에서 세로 가운데에 둔다.
 frame_mid_part = QLabel("→")
 frame_mid_part.setObjectName("ArrowLabel")
 frame_mid_part.setFixedWidth(36)
 frame_mid_part.setAlignment(Qt.AlignmentFlag.AlignCenter)
-_select_layout.addWidget(frame_mid_part)
+_select_layout.addWidget(
+    frame_mid_part,
+    _SEL_ROW_TITLE, _SEL_COL_ARROW, # 시작 위치
+    4, 1,                           # 4개 행에 걸침
+    Qt.AlignmentFlag.AlignCenter,
+)
 
 # 대상폴더 선택
-frame_tar_part = QWidget()
-_tar_layout = QVBoxLayout(frame_tar_part)
-_tar_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-_tar_layout.setSpacing(14)
-
 label_target = QLabel("대상폴더")
 label_target.setObjectName("HeaderLabel")
 label_target.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -318,17 +350,22 @@ btn_sel_target.setIconSize(QSize(140, 140))
 btn_sel_target.setFixedSize(190, 190)
 btn_sel_target.setCursor(Qt.CursorShape.PointingHandCursor)
 
+label_tar_drive = QLabel("")
+label_tar_drive.setObjectName("DriveLabel")
+label_tar_drive.setAlignment(Qt.AlignmentFlag.AlignCenter)
+label_tar_drive.setFixedWidth(260)
+label_tar_drive.setFixedHeight(20)
+
 label_tar_path = QLabel("")
 label_tar_path.setObjectName("SubLabel")
 label_tar_path.setWordWrap(True)
 label_tar_path.setAlignment(Qt.AlignmentFlag.AlignCenter)
 label_tar_path.setFixedWidth(260)
 
-_tar_layout.addWidget(label_target)
-_tar_layout.addWidget(btn_sel_target, alignment=Qt.AlignmentFlag.AlignHCenter)
-_tar_layout.addWidget(label_tar_path)
-
-_select_layout.addWidget(frame_tar_part, 1)
+_select_layout.addWidget(label_target, _SEL_ROW_TITLE, _SEL_COL_TAR, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(btn_sel_target, _SEL_ROW_BUTTON, _SEL_COL_TAR, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(label_tar_drive, _SEL_ROW_DRIVE, _SEL_COL_TAR, Qt.AlignmentFlag.AlignHCenter)
+_select_layout.addWidget(label_tar_path, _SEL_ROW_PATH, _SEL_COL_TAR, _PATH_ALIGN)
 
 frame_main.addWidget(frame_center_select)
 
@@ -472,17 +509,81 @@ frame_main.addWidget(frame_center_progress)
 frame_center_result = QWidget()
 _result_layout = QGridLayout(frame_center_result)
 _result_layout.setContentsMargins(24, 20, 24, 20)
-_result_layout.setRowStretch(0, 1)
-_result_layout.setRowStretch(1, 2)
+# 경로 카드 높이: 14px 글자 기준 5줄 + 제목 + 여백
+_PATH_CARD_HEIGHT = 128
 
-# 상단 구성 요소들을 묶을 프레임 (비율 1 영역)
+# 위/아래를 반씩 나누되, 가운데에 세로 10% 정도의 여백 행을 둔다.
+# (위: 설명 + 카드 / 가운데: 여백 / 아래: 버튼 + 리스트)
+_result_layout.setRowStretch(0, 45)
+_result_layout.setRowStretch(1, 10)
+_result_layout.setRowStretch(2, 45)
+
+
+def _make_result_card(title: str, wrap=False, min_height=0):
+    """
+    검사 결과 화면 상단에 들어갈 카드 한 장을 만든다.
+    카드 프레임과, 값을 채워 넣을 라벨을 함께 반환한다.
+
+    wrap: 값이 길면 여러 줄로 접는다. (경로 카드용)
+    min_height: 카드의 최소 높이. 경로 카드는 여러 줄이 들어갈 자리를 미리 잡아둔다.
+    """
+    card = QFrame()
+    card.setObjectName("PanelCard")
+    if min_height:
+        card.setMinimumHeight(min_height)
+
+    layout = QVBoxLayout(card)
+    layout.setContentsMargins(14, 10, 14, 10)
+    layout.setSpacing(2)
+
+    title_label = QLabel(title)
+    title_label.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SUB};")
+
+    value_label = QLabel("-")
+    value_label.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT}; font-weight: 600;")
+    value_label.setWordWrap(wrap)
+    value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+    layout.addWidget(title_label)
+    layout.addWidget(value_label, 1)
+    return card, value_label
+
+
+# 상단 구성 요소들을 묶을 프레임 (화면 위쪽 절반)
 frame_result_header = QWidget()
 _result_header_layout = QVBoxLayout(frame_result_header)
 _result_header_layout.setContentsMargins(0, 0, 0, 0)
+_result_header_layout.setSpacing(10)
 
 lable_expl_result = QLabel("다음 파일들을 백업합니다")
 lable_expl_result.setObjectName("HeaderLabel")
+lable_expl_result.setWordWrap(True)
 _result_header_layout.addWidget(lable_expl_result)
+
+# 원본 폴더 / 대상 폴더 / 폴더 유사도 / 파일 유사도를 2x2 격자 카드로 표시
+frame_result_cards = QWidget()
+_result_cards_layout = QGridLayout(frame_result_cards)
+_result_cards_layout.setContentsMargins(0, 0, 0, 0)
+_result_cards_layout.setHorizontalSpacing(14)
+_result_cards_layout.setVerticalSpacing(10)
+_result_cards_layout.setColumnStretch(0, 1)
+_result_cards_layout.setColumnStretch(1, 1)
+_result_cards_layout.setRowStretch(0, 1)  # 경로 카드만 남는 세로 공간을 가져간다
+_result_cards_layout.setRowStretch(1, 0)
+
+# 경로는 생략 없이 전부 보여줘야 하므로 4~5줄이 들어갈 자리를 잡아둔다.
+card_org_path, label_result_org = _make_result_card("원본 폴더", wrap=True, min_height=_PATH_CARD_HEIGHT)
+card_tar_path, label_result_tar = _make_result_card("대상 폴더", wrap=True, min_height=_PATH_CARD_HEIGHT)
+# 유사도는 한 줄이면 충분하다. (검사 결과 화면에서만 쓰고, 재검사 결과 화면에서는 숨긴다)
+card_dirs_similarity, label_dirs_similarity = _make_result_card("폴더 유사도")
+card_files_similarity, label_files_similarity = _make_result_card("파일 유사도")
+
+_result_cards_layout.addWidget(card_org_path, 0, 0)
+_result_cards_layout.addWidget(card_tar_path, 0, 1)
+_result_cards_layout.addWidget(card_dirs_similarity, 1, 0)
+_result_cards_layout.addWidget(card_files_similarity, 1, 1)
+
+_result_header_layout.addWidget(frame_result_cards, 1)
 
 _result_layout.addWidget(frame_result_header, 0, 0)
 
@@ -517,7 +618,7 @@ mid_result_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
 mid_result_scroll = mid_result_list.verticalScrollBar()
 _mid_result_layout.addWidget(mid_result_list, 1)
 
-_result_layout.addWidget(frame_mid_result, 1, 0)
+_result_layout.addWidget(frame_mid_result, 2, 0)  # 1행은 가운데 여백
 
 frame_main.addWidget(frame_center_result)
 

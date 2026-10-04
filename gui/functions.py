@@ -29,14 +29,14 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox
 from gui.components import *  # noqa: F401,F403  (root, frame_*, btn_*, label_* 등)
 from gui.components import call_in_gui_thread, call_in_gui_thread_blocking
 from gui.updater import UiUpdater
-from system.AppData import AppData
+from system.AppData import AppData, reset_appdata
+from system.Trashbin import Trashbin
 from system.SystemValues import SystemValues
 from system.aftercheck import aftercheck
 from system.backup import backup, boost
 from system.compare import compare
 from system.constants import APPNAME
-from system.path import PREFIX_MAX_PATH, get_root_dirs_count, is_dest_in_src
-
+from system.path import PREFIX_MAX_PATH, is_dest_in_src
 
 def _ask_yes_no(message: str) -> bool:
     reply = QMessageBox.question(
@@ -56,6 +56,10 @@ def _show_warning(message: str):
 
 # --- 각 화면 전환 함수 ---
 def show_home():
+    # 처음 화면으로 돌아올 때는 이전 작업의 흔적을 남기지 않는다.
+    reset_appdata()
+    Trashbin.remove_path = ""
+
     btn_Previous.hide()
     btn_optimize.hide()
 
@@ -141,17 +145,25 @@ def show_compare():
     # 스레드가 끝나면 자동으로 show_compare_result 호출
 
 
-def _fill_result_screen(res, on_backup_command, previous_text, previous_command, header_text):
-    """ show_compare_result / show_aftercheck_result의 공통 로직 """
+def show_compare_result():
+    """ 검사 결과 화면을 띄운다. """
+
+    res = AppData.compare_result
+    if res is None:
+        _show_error("알 수 없는 오류가 발생하였습니다.")
+        show_home()
+        return
+
     btn_begin.setText("백업")
     btn_begin.setEnabled(True)
     btn_begin.clicked.disconnect()
-    btn_begin.clicked.connect(on_backup_command)
+    btn_begin.clicked.connect(show_backup)
 
-    btn_Previous.setText(previous_text)
+    btn_Previous.setText("이전")
     btn_Previous.setEnabled(True)
     btn_Previous.clicked.disconnect()
-    btn_Previous.clicked.connect(previous_command)
+    btn_Previous.clicked.connect(btn_prev_compare_again)
+    btn_Previous.show() # 완료 화면 등에서 숨겨진 채로 넘어와도 다시 보이게 한다
 
     # 버튼 텍스트 업데이트
     btn_result_delete.setText(f"삭제할 파일({len(res.files_rmv)})")
@@ -189,62 +201,37 @@ def _fill_result_screen(res, on_backup_command, previous_text, previous_command,
         update_result_listbox(res.files_rmv)
 
     # 경로 표시
-    _org = res.org_path.removeprefix(PREFIX_MAX_PATH)
-    _tar = res.tar_path.removeprefix(PREFIX_MAX_PATH)
-    lable_expl_result.setText(f"{header_text}\n원본 폴더 : {_org}\n대상 폴더 : {_tar}")
+    label_org_path.setText(res.org_path.removeprefix(PREFIX_MAX_PATH))
+    label_tar_path.setText(res.tar_path.removeprefix(PREFIX_MAX_PATH))
+    # 결과 화면의 경로 카드도 같은 값으로 채운다.
+    label_result_org.setText(label_org_path.text())
+    label_result_tar.setText(label_tar_path.text())
+    lable_expl_result.setText("원본 폴더의 내용은 변경되지 않습니다.")
 
+    # 유사도 표시
+    # 유사도가 음수이면 잴 대상 자체가 없었다는 뜻이다.
+    if res.dirs_similarity < 0:
+        label_dirs_similarity.setText("하위 폴더 없음")
+    else:
+        label_dirs_similarity.setText(f"{res.dirs_similarity:.1f}%")
 
-def show_compare_result():
-    res = AppData.compare_result
-    if res is None:
-        _show_error("알 수 없는 오류가 발생하였습니다.")
-        show_home()
-        return
-
-    _fill_result_screen(
-        res,
-        on_backup_command=show_backup,
-        previous_text="이전",
-        previous_command=btn_prev_compare_again,
-        header_text="원본 폴더의 내용은 변경되지 않습니다.",
-    )
-
-    # 유저가 폴더를 잘못 선택할 가능성을 확인함
+    if res.files_similarity < 0:
+        label_files_similarity.setText("파일 없음")
+    else:
+        label_files_similarity.setText(f"{res.files_similarity:.1f}%")
 
     # 화면 전환
     switch_frame(frame_center_result)
     update_sidebar(3)
 
     # 유저가 폴더를 잘못 선택함을 알림
-    """
-    dirs_same의 개수가 1개뿐인 경우 보통 원본/대상 폴더를 잘못 지정한 것이다.
-    즉 이럴 경우 폴더 일치율을 0%라고 계산하고, 유저에게 표시할 수 있다. 
-    그런데 양쪽에 폴더가 없었다면 똑같이 0%지만 상황이 조금 다르다.
-    그럴땐 "하위 폴더 없음" 이라고 유저에게 표시하자.
-
-    파일 일치율은 오로지 files_same을 기준으로 한다.
-
-    기준은 10%로 하자. 
-    또한 더블 클릭을 방지하기 위해서 백업 버튼을 누를때도 더블 체크를 시킨다.
-
-    그럼 이제 어떻게 모집단을 구해야 하는지가 관건이다.
-    가장 간단한 모델을 생각해보자.
-    A 집합과 B 집합이 있다.
-    A는 {a, b, c, d, e}로 이루어져 있고,
-    B는 {b, c, d, e, f}로 이루어져 있다.
-    즉 A->B로 백업할때 a는 복사하고 f는 삭제해야하는 상황이다.
-
-    이럴 경우의 유사도를 측정해보자면, 우선 전체집합은 {a, b, c, d, e, f}로 크기가 6이다.
-    그중 교집합이 {b, c, d, e}이고 크기가 4이다.
-    따라서 유사도는 4/6이다.
-
-    모든 파일 검사에서는 각 공통 디렉터리에 바로 속한 파일들의 집합을 비교하도록 되어있다.
-    애초에 files_same을 알아내는 과정에서 자연스럽게 합집합도 구할 수 있다.
+    # 폴더 유사도와 파일 유사도 중 어느 하나라도 기준치보다 낮으면 경고한다.
+    # 음수는 잴 대상이 없었다는 뜻이므로 판단에서 제외한다.
     
-    """
-    if get_root_dirs_count(res.org_path) != 0 and get_root_dirs_count(res.tar_path) != 0:
-        if len(res.files_same) == 0 or len(res.dirs_same) == 1:
-            _show_warning("원본/대상 폴더간에 공통점이 거의 없습니다.\n선택된 폴더가 올바른지 확인하세요.")
+    SIMILARITY_WARNING_THRESHOLD = 30.0 # 폴더/파일 유사도가 이 값보다 낮으면 폴더를 잘못 고른 것으로 보고 경고한다.
+    if 0 <= res.dirs_similarity < SIMILARITY_WARNING_THRESHOLD or 0 <= res.files_similarity < SIMILARITY_WARNING_THRESHOLD:
+        _show_warning("원본/대상 폴더간에 공통점이 거의 없습니다.\n"
+                      "선택된 폴더가 올바른지 확인하세요.")
 
 
 def show_backup():
@@ -272,46 +259,21 @@ def show_complete():
     btn_optimize.clicked.connect(show_boost)
     btn_optimize.show()
 
-    label_complete.setText("검사한 시간 : {:.1f}초".format(SystemValues.compare_run_time))
-    label_complete2.setText("백업한 시간 : {:.1f}초".format(SystemValues.backup_run_time))
-    label_complete3.setText("최적화율 : {:.1f}%".format(int(SystemValues.optimized_percent * 10) / 10))
+
+    label_complete.setText("검사한 시간 : {:.1f}초".format(AppData.compare_run_time))
+    label_complete2.setText("백업한 시간 : {:.1f}초".format(AppData.backup_run_time))
+    label_complete3.setText("최적화율 : {:.1f}%".format(AppData.compare_result.optimized_percent))
 
     btn_Previous.hide()
     switch_frame(frame_center_complete)
     update_sidebar(5)
 
-
-def show_aftercheck_result():
-    """
-    show_compare_result와 거의 동일하나,
-    AppData.compare_result가 AppData.failed_result로 바뀌어있다.
-    """
-    res = AppData.failed_result  # 실패한것만 다시
-    if res is None:
-        _show_error("알 수 없는 오류가 발생하였습니다.")
-        show_home()
-        return
-
-    _fill_result_screen(
-        res,
-        on_backup_command=show_re_backup,
-        previous_text="취소",
-        previous_command=btn_prev_cancel_re_backup,
-        header_text="백업에 실패한 파일이 발견되었습니다.",
-    )
-
-    switch_frame(frame_center_result)
-    update_sidebar(3)
-
-
-def show_re_backup():
-    btn_begin.setText("다음")
-    btn_begin.setEnabled(False)
-    btn_Previous.setEnabled(False)
-
-    switch_frame(frame_center_progress)
-    update_sidebar(4)
-    Thread(target=run_re_backup, daemon=True).start()
+    if AppData.backup_success:
+        pass # 백업 성공 메시지 띄움 
+    else:
+        # 백업 실패 메시지 띄움 
+        pass
+        _show_error("백업되지 않은 파일이 존재합니다. 다시 검사해주세요.")
 
 
 def show_boost():
@@ -363,7 +325,6 @@ def update_sidebar(index: int):
         else:
             label.setPixmap(_sidebar_images[i])
             label.setStyleSheet(f"background-color: {COLOR_BG};")
-
 
 def update_result_listbox(data_list):
     """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
@@ -422,114 +383,82 @@ def btn_det_sel_clicked():
 
 
 def run_compare():
-    try:
-        UiUpdater.start(UiUpdater.update_compare)
+    """
+    compare()를 돌려 AppData.compare_result를 갱신한다.
+    """
+    UiUpdater.start(UiUpdater.update_compare)
+    SystemValues.compare_start_time = time()
 
-        SystemValues.compare_start_time = time()
+    try:
         AppData.compare_result = compare(
             label_org_path.text(),
             label_tar_path.text(),
             AppData.fast_scan,
         )
-        SystemValues.compare_run_time = time() - SystemValues.compare_start_time
-
-        # 최적화율 기록은 상위 레벨인 여기서 담당한다.
-        # (compare가 직접 기록하면 aftercheck 안의 중첩 compare가 이 값을 덮어써 버린다.)
-        SystemValues.optimized_percent = AppData.compare_result.optimized_percent
-
-        UiUpdater.stop()
-        sleep(0.5)
-
-        call_in_gui_thread(show_compare_result)
     except Exception:
-        UiUpdater.stop()
-        sleep(0.5)
+        cancel_task("검사 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        return 
 
-        def handle_error():
-            _show_error("검사 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
-            show_select_folder()
-
-        call_in_gui_thread(handle_error)
-
-
-def run_backup():
-    # 진행중에 바뀌는 메시지는 backup(), aftercheck(), boost() 안에 존재한다.
-
-    # 권한 문제인 파일은 backup() 안에서 알아서 건너뛴다.
-    # 여기까지 올라온 오류는 USB 분리, 용량 부족처럼 작업을 이어갈 수 없는 상황이다.
-    # 원본 폴더는 절대 건드리지 않으므로, 그냥 백업을 취소하고 처음 화면으로 돌아가면 된다.
-    # 다시 실행하면 compare()가 남은 차이만 다시 계산하므로 이어서 하는 것과 같다.
-    UiUpdater.start(UiUpdater.update_backup)
-
-    SystemValues.backup_start_time = time()
-    try:
-        # 1. 백업 루틴
-        backup(AppData.compare_result)
-        SystemValues.backup_progress_msg = "백업 완료"
-
-        # 2. 재검사 루틴
-        AppData.failed_result = aftercheck(AppData.compare_result, AppData.fast_scan)
-        SystemValues.backup_progress_msg = "재검사 완료"
-    except Exception:
-        cancel_backup()
-        return
-    finally:
-        SystemValues.backup_run_time = time() - SystemValues.backup_start_time
-
+    AppData.compare_run_time = time() - SystemValues.compare_start_time
     UiUpdater.stop()
     sleep(0.5)
 
-    # 백업이 제대로 완료되지 않았다면
-    if not AppData.failed_result.is_empty():
-        call_in_gui_thread(show_aftercheck_result)
+    call_in_gui_thread(show_compare_result)
+
+
+def run_backup():
+    # ---------- 백업 ----------
+    UiUpdater.start(UiUpdater.update_backup)
+    SystemValues.backup_start_time = time()
+
+    backup(AppData.compare_result)
+    try:
+        failed = aftercheck(AppData.compare_result, AppData.fast_scan)
+    except Exception:
+        cancel_task("검사 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        return
+
+    AppData.backup_run_time = time() - SystemValues.backup_start_time
+    UiUpdater.stop()
+    sleep(0.5)
+
+    remain = len(failed.dirs_copy) + len(failed.dirs_rmv) + len(failed.files_copy) + \
+            len(failed.files_rmv) + len(failed.files_renew)
+
+    if remain == 0: # 더 처리할 것이 없다 -> 백업 성공
+        AppData.backup_success = True 
     else:
-        call_in_gui_thread(show_complete)
+        AppData.backup_success = False
+    call_in_gui_thread(show_complete) 
 
 
-def cancel_backup():
+def cancel_task(message: str):
     """
-    백업을 이어갈 수 없는 오류가 발생했을 때, 작업을 취소하고 처음 화면으로 돌아간다.
+    작업을 이어갈 수 없는 오류가 발생했을 때, 작업을 중단하고 처음 화면으로 돌아간다.
+    검사/백업/최적화 어디에서 호출하든 동작이 같다.
 
-    이 상태에서는 재검사(aftercheck)를 돌리면 안 된다.
-    장치가 사라진 상태에서 재검사를 하면 모든 파일이 백업에 실패한 것으로 잘못 판정되고,
-    삭제한 파일은 반대로 잘 지워진 것으로 오판하기 때문이다.
+    기다렸다가 재개하지 않고 무조건 중단하는 이유:
+    - 원본 폴더는 절대 건드리지 않으므로 중단해도 데이터가 안전하다.
+    - compare()가 매번 현재 상태를 처음부터 다시 계산하므로, 다시 실행하는 것이 곧 이어서 하기다.
+      즉 재개해서 아낄 수 있는 것은 검사 시간뿐이다.
+    - "장치를 다시 연결해주세요" 하고 기다리면 그 사이에 다른 장치가 꽂힐 수 있다.
+      기다리지 않으면 그런 상황 자체가 생기지 않는다.
     """
     UiUpdater.stop()
     sleep(0.5)
 
     def handle_error():
-        _show_error("백업이 중단되었습니다.\n"
-                    "USB 인식 상태 등을 확인한 뒤 다시 시도해주세요.\n"
-                    "원본 폴더는 변경되지 않았습니다.")
+        _show_error(message)
+
+        # 오류로 중단한 경우에는 선택했던 경로까지 지운다.
+        # 장치가 사라진 뒤 같은 드라이브 문자에 다른 장치가 붙을 수 있으므로,
+        # 경로 문자열을 그대로 재사용하지 않고 사용자가 다시 고르게 한다.
+        label_org_path.setText("")
+        label_tar_path.setText("")
+
         show_home()
 
     call_in_gui_thread(handle_error)
-
-
-def run_re_backup():
-    # run_backup의 파생형
-    UiUpdater.start(UiUpdater.update_backup)
-
-    SystemValues.backup_start_time = time()
-    try:
-        backup(AppData.failed_result)
-        AppData.failed_result = aftercheck(AppData.failed_result, AppData.fast_scan)
-    except Exception:
-        # run_backup과 동일하게, 이어갈 수 없는 오류면 취소하고 처음 화면으로 돌아간다.
-        cancel_backup()
-        return
-    finally:
-        SystemValues.backup_run_time += time() - SystemValues.backup_start_time
-
-    SystemValues.backup_progress_msg = "백업 완료"
-    UiUpdater.stop()
-    sleep(0.5)
-
-    # 백업이 제대로 완료되지 않았다면
-    if not AppData.failed_result.is_empty():
-        call_in_gui_thread(show_aftercheck_result)
-    else:
-        call_in_gui_thread(show_complete)
 
 
 def run_boost():
@@ -546,25 +475,12 @@ def run_boost():
 
         call_in_gui_thread(show_complete)
     except Exception:
-        UiUpdater.stop()
-        sleep(0.5)
-
-        def handle_error():
-            _show_error("최적화 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
-            show_complete()
-
-        call_in_gui_thread(handle_error)
+        # 최적화 중에도 장치가 바뀔 수 있으므로 다른 작업과 똑같이 중단하고 처음 화면으로 돌아간다.
+        cancel_task("최적화 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
 
 
 def btn_prev_compare_again():
     if not _ask_yes_no("백업을 취소하시겠습니까?"):
-        return None
-
-    show_home()
-
-
-def btn_prev_cancel_re_backup():
-    if not _ask_yes_no("모든 작업을 취소하시겠습니까?"):
         return None
 
     show_home()
