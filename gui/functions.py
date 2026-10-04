@@ -36,7 +36,7 @@ from system.aftercheck import aftercheck
 from system.backup import backup, boost
 from system.compare import compare
 from system.constants import APPNAME
-from system.path import PREFIX_MAX_PATH, is_dest_in_src
+from system.path import PREFIX_MAX_PATH, get_drive_display_name, is_dest_in_src
 
 def _ask_yes_no(message: str) -> bool:
     reply = QMessageBox.question(
@@ -125,6 +125,7 @@ def show_select_check_mode():
     btn_Previous.clicked.disconnect()
     btn_Previous.clicked.connect(show_select_folder)
 
+    update_check_mode_cards(AppData.fast_scan) # 처음으로 돌아갔다 오면 기본값(빠른검사)으로 초기화되어 있음
     switch_frame(frame_center_check)
     update_sidebar(1)
 
@@ -165,40 +166,14 @@ def show_compare_result():
     btn_Previous.clicked.connect(btn_prev_compare_again)
     btn_Previous.show() # 완료 화면 등에서 숨겨진 채로 넘어와도 다시 보이게 한다
 
-    # 버튼 텍스트 업데이트
-    btn_result_delete.setText(f"삭제할 파일({len(res.files_rmv)})")
-    btn_result_delete.clicked.disconnect()
-    btn_result_delete.clicked.connect(lambda: update_result_listbox(res.files_rmv))
-
-    btn_result_delete2.setText(f"삭제할 폴더({len(res.dirs_rmv)})")
-    btn_result_delete2.clicked.disconnect()
-    btn_result_delete2.clicked.connect(lambda: update_result_listbox(res.dirs_rmv))
-
-    btn_result_copy.setText(f"복사할 파일({len(res.files_copy)})")
-    btn_result_copy.clicked.disconnect()
-    btn_result_copy.clicked.connect(lambda: update_result_listbox(res.files_copy))
-
-    btn_result_copy2.setText(f"복사할 폴더({len(res.dirs_copy)})")
-    btn_result_copy2.clicked.disconnect()
-    btn_result_copy2.clicked.connect(lambda: update_result_listbox(res.dirs_copy))
-
-    btn_result_refresh.setText(f"변경할 파일({len(res.files_renew)})")
-    btn_result_refresh.clicked.disconnect()
-    btn_result_refresh.clicked.connect(lambda: update_result_listbox(res.files_renew))
-
-    # 리스트박스 업데이트(내용이 존재하는거로)
-    if len(res.files_rmv) != 0:
-        update_result_listbox(res.files_rmv)
-    elif len(res.dirs_rmv) != 0:
-        update_result_listbox(res.dirs_rmv)
-    elif len(res.files_copy) != 0:
-        update_result_listbox(res.files_copy)
-    elif len(res.dirs_copy) != 0:
-        update_result_listbox(res.dirs_copy)
-    elif len(res.files_renew) != 0:
-        update_result_listbox(res.files_renew)
-    else:
-        update_result_listbox(res.files_rmv)
+    # 변경 사항 카드 업데이트
+    update_changes_card({
+        "삭제할 파일": len(res.files_rmv),
+        "삭제할 폴더": len(res.dirs_rmv),
+        "복사할 파일": len(res.files_copy),
+        "복사할 폴더": len(res.dirs_copy),
+        "변경할 파일": len(res.files_renew),
+    })
 
     # 경로 표시
     label_org_path.setText(res.org_path.removeprefix(PREFIX_MAX_PATH))
@@ -206,21 +181,14 @@ def show_compare_result():
     # 결과 화면의 경로 카드도 같은 값으로 채운다.
     label_result_org.setText(label_org_path.text())
     label_result_tar.setText(label_tar_path.text())
-    lable_expl_result.setText("원본 폴더의 내용은 변경되지 않습니다.")
 
     # 유사도 표시
-    # 유사도가 음수이면 잴 대상 자체가 없었다는 뜻이다.
-    if res.dirs_similarity < 0:
-        label_dirs_similarity.setText("하위 폴더 없음")
-    else:
-        label_dirs_similarity.setText(f"{res.dirs_similarity:.1f}%")
-
-    if res.files_similarity < 0:
-        label_files_similarity.setText("파일 없음")
-    else:
-        label_files_similarity.setText(f"{res.files_similarity:.1f}%")
+    # 유사도가 음수이면 차트 대신 "폴더 없음"/"파일 없음"이 표시된다.
+    pie_dirs_similarity.set_similarity(res.dirs_similarity)
+    pie_files_similarity.set_similarity(res.files_similarity)
 
     # 화면 전환
+    result_tabs.setCurrentIndex(0) # 항상 개요 탭부터 보여준다
     switch_frame(frame_center_result)
     update_sidebar(3)
 
@@ -260,9 +228,12 @@ def show_complete():
     btn_optimize.show()
 
 
-    label_complete.setText("검사한 시간 : {:.1f}초".format(AppData.compare_run_time))
-    label_complete2.setText("백업한 시간 : {:.1f}초".format(AppData.backup_run_time))
-    label_complete3.setText("최적화율 : {:.1f}%".format(AppData.compare_result.optimized_percent))
+    update_complete_screen(
+        AppData.backup_success,
+        AppData.compare_run_time,
+        AppData.backup_run_time,
+        AppData.compare_result.optimized_percent,
+    )
 
     btn_Previous.hide()
     switch_frame(frame_center_complete)
@@ -326,14 +297,6 @@ def update_sidebar(index: int):
             label.setPixmap(_sidebar_images[i])
             label.setStyleSheet(f"background-color: {COLOR_BG};")
 
-def update_result_listbox(data_list):
-    """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
-    mid_result_list.clear()
-    # 데이터가 set인 경우를 대비해 정렬된 리스트로 변환하여 삽입
-    # addItem으로 하나씩 넣으면 항목이 많을 때 느리므로 addItems로 한 번에 넣는다.
-    items = [item.removeprefix(PREFIX_MAX_PATH) for item in sorted(data_list)]
-    mid_result_list.addItems(items)
-
 
 # --- 이벤트 핸들러 ---
 # 폴더 선택 화면
@@ -353,6 +316,7 @@ def btn_sel_org_clicked():
         break
 
     label_org_path.setText(path)
+    label_org_drive.setText(get_drive_display_name(path)) # 예) "로컬 디스크 (C:)"
 
 
 def btn_sel_target_clicked():
@@ -371,15 +335,18 @@ def btn_sel_target_clicked():
         break
 
     label_tar_path.setText(path)
+    label_tar_drive.setText(get_drive_display_name(path))
 
 
 # 백업 모드 선택 화면
 def btn_fast_sel_clicked():
     AppData.fast_scan = True
+    update_check_mode_cards(AppData.fast_scan)
 
 
 def btn_det_sel_clicked():
     AppData.fast_scan = False
+    update_check_mode_cards(AppData.fast_scan)
 
 
 def run_compare():
@@ -455,6 +422,8 @@ def cancel_task(message: str):
         # 경로 문자열을 그대로 재사용하지 않고 사용자가 다시 고르게 한다.
         label_org_path.setText("")
         label_tar_path.setText("")
+        label_org_drive.setText("")
+        label_tar_drive.setText("")
 
         show_home()
 

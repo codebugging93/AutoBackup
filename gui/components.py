@@ -9,22 +9,24 @@ gui/components.py(tkinter)를 PySide6로 번역한 버전입니다.
 - switch_frame()에 해당하는 기능은 QStackedWidget(frame_main)의 setCurrentWidget으로 대체됩니다.
 """
 
+import math
 import os
 import sys
 from threading import Event
 
-from PySide6.QtCore import QObject, QSize, Qt, QThread, Signal
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import QObject, QRectF, QSize, Qt, QThread, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
-    QListWidget,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QStackedWidget,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -36,8 +38,10 @@ from system.constants import APPNAME, SUISEI_BLUE
 COLOR_BG = "#F5F9FE"      # 사이드바/카드 등 은은한 배경
 COLOR_BLUE = SUISEI_BLUE       # 포인트 컬러 (#75B7EA)
 COLOR_BORDER = "#E3EAF3"
-COLOR_TEXT = "#28303B"
-COLOR_TEXT_SUB = "#8993A6"
+COLOR_TEXT = "#28303B"         # 기본 글자색(검은색 계열). 색을 따로 지정하지 않은 QLabel 등은 전부 이 색을 쓴다.
+COLOR_TEXT_SUB = "#8993A6"     # 흐린 글자색(회색). 카드 제목, 안내 문구 등
+COLOR_BLUE_PRESSED = QColor(COLOR_BLUE).darker(115).name()  # 파란 버튼을 누르고 있을 때 (포인트 컬러보다 15% 어둡게)
+COLOR_BLUE_SOFT = "#DCEBF8"    # 흰 버튼을 누르고 있을 때 깔리는 옅은 파랑
 
 
 def _icon(path: str, size: int) -> QPixmap:
@@ -93,6 +97,9 @@ QWidget {{
     border: 1px solid {COLOR_BORDER};
     border-radius: 12px;
 }}
+#PanelCard[selected="true"] {{
+    border: 2px solid {COLOR_BLUE};
+}}
 #IconButton {{
     border: 2px solid {COLOR_BORDER};
     border-radius: 18px;
@@ -113,6 +120,10 @@ QPushButton {{
 QPushButton:hover {{
     background-color: {COLOR_BG};
 }}
+QPushButton:pressed {{
+    background-color: {COLOR_BLUE_SOFT};
+    padding: 9px 18px 7px 18px; /* 글자를 1px 아래로 내려 눌린 느낌을 준다 */
+}}
 QPushButton:disabled {{
     color: {COLOR_TEXT_SUB};
     border-color: {COLOR_BORDER};
@@ -124,6 +135,9 @@ QPushButton:disabled {{
 }}
 #PrimaryButton:hover {{
     background-color: {COLOR_BLUE};
+}}
+#PrimaryButton:pressed {{
+    background-color: {COLOR_BLUE_PRESSED};
 }}
 #PrimaryButton:disabled {{
     background-color: {COLOR_BORDER};
@@ -433,6 +447,18 @@ _check_layout.addWidget(fram_detail, 1)
 frame_main.addWidget(frame_center_check)
 
 
+def update_check_mode_cards(fast_scan: bool):
+    """ 빠른검사/정밀검사 중 선택된 쪽 카드에 파란 테두리를 두른다. """
+    for card, selected in ((frame_fast_check, fast_scan), (fram_detail, not fast_scan)):
+        card.setProperty("selected", selected)
+        # 속성만 바꾸면 스타일시트가 다시 적용되지 않으므로 직접 다시 입혀준다.
+        card.style().unpolish(card)
+        card.style().polish(card)
+
+
+update_check_mode_cards(True)  # 기본값은 빠른검사 (AppData.fast_scan의 기본값과 동일)
+
+
 # --- 4번 프로그레스바 화면 ---
 frame_center_progress = QWidget()
 _progress_layout = QVBoxLayout(frame_center_progress)
@@ -506,22 +532,55 @@ frame_main.addWidget(frame_center_progress)
 
 
 # --- 5번 검사결과표시 화면 ---
+# 크롬 탭처럼 생긴 탭 두 개로 구성한다.
+#   1) 백업 개요: 경로 / 변경 사항 / 유사도 등 한눈에 볼 정보
+#   2) 제외 항목 선택: 백업에서 뺄 파일/폴더를 고르는 화면 (아직 빈 탭)
 frame_center_result = QWidget()
-_result_layout = QGridLayout(frame_center_result)
-_result_layout.setContentsMargins(24, 20, 24, 20)
-# 경로 카드 높이: 14px 글자 기준 5줄 + 제목 + 여백
-_PATH_CARD_HEIGHT = 128
+_result_layout = QVBoxLayout(frame_center_result)
+_result_layout.setContentsMargins(20, 14, 20, 14)
+_result_layout.setSpacing(0)
+# 경로 카드 높이: 14px 글자 기준 4줄 + 제목 + 여백
+_PATH_CARD_HEIGHT = 104
 
-# 위/아래를 반씩 나누되, 가운데에 세로 10% 정도의 여백 행을 둔다.
-# (위: 설명 + 카드 / 가운데: 여백 / 아래: 버튼 + 리스트)
-_result_layout.setRowStretch(0, 45)
-_result_layout.setRowStretch(1, 10)
-_result_layout.setRowStretch(2, 45)
+result_tabs = QTabWidget()
+result_tabs.setDocumentMode(False)
+result_tabs.tabBar().setExpanding(False)
+result_tabs.tabBar().setDrawBase(False)
+# 선택된 탭은 아래 본문(pane)과 같은 색으로 이어 붙이고, 나머지 탭은 한 톤 어둡게 해서
+# 크롬 탭처럼 "앞에 나와 있는 탭"이 구분되게 한다.
+result_tabs.setStyleSheet(f"""
+QTabWidget::pane {{
+    background-color: {COLOR_BG};
+    border: 1px solid {COLOR_BORDER};
+    top: -1px;
+}}
+QTabBar::tab {{
+    background-color: {COLOR_BORDER};
+    color: {COLOR_TEXT_SUB};
+    border: 1px solid {COLOR_BORDER};
+    border-bottom: none;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 7px 22px;
+    margin-right: 2px;
+    min-width: 110px;
+}}
+QTabBar::tab:selected {{
+    background-color: {COLOR_BG};
+    color: {COLOR_TEXT};
+    font-weight: 700;
+    border-top: 2px solid {COLOR_BLUE};
+}}
+QTabBar::tab:!selected:hover {{
+    color: {COLOR_TEXT};
+}}
+""")
+_result_layout.addWidget(result_tabs)
 
 
 def _make_result_card(title: str, wrap=False, min_height=0):
     """
-    검사 결과 화면 상단에 들어갈 카드 한 장을 만든다.
+    검사 결과 화면에 들어갈 카드 한 장을 만든다.
     카드 프레임과, 값을 채워 넣을 라벨을 함께 반환한다.
 
     wrap: 값이 길면 여러 줄로 접는다. (경로 카드용)
@@ -539,7 +598,7 @@ def _make_result_card(title: str, wrap=False, min_height=0):
     title_label = QLabel(title)
     title_label.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SUB};")
 
-    value_label = QLabel("-")
+    value_label = _PathLabel("-") if wrap else QLabel("-")
     value_label.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT}; font-weight: 600;")
     value_label.setWordWrap(wrap)
     value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
@@ -549,99 +608,325 @@ def _make_result_card(title: str, wrap=False, min_height=0):
     return card, value_label
 
 
-# 상단 구성 요소들을 묶을 프레임 (화면 위쪽 절반)
-frame_result_header = QWidget()
-_result_header_layout = QVBoxLayout(frame_result_header)
-_result_header_layout.setContentsMargins(0, 0, 0, 0)
-_result_header_layout.setSpacing(10)
+class _PathLabel(QLabel):
+    """
+    경로 표시용 라벨.
+    Qt의 줄바꿈은 공백에서만 일어나서, 공백 없는 긴 경로는 카드 폭을 밀어내 버린다.
+    화면에 보일 때만 경로 구분자 뒤에 폭 없는 공백(U+200B)을 넣어 그 자리에서 줄이 바뀌게 하고,
+    text()는 원래 경로를 그대로 돌려준다.
+    """
 
-lable_expl_result = QLabel("다음 파일들을 백업합니다")
-lable_expl_result.setObjectName("HeaderLabel")
-lable_expl_result.setWordWrap(True)
-_result_header_layout.addWidget(lable_expl_result)
+    def __init__(self, text=""):
+        super().__init__()
+        self._raw = ""
+        # 내용 길이 때문에 카드 폭이 늘어나지 않게 한다. (폭은 레이아웃이 정함)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.setText(text)
 
-# 원본 폴더 / 대상 폴더 / 폴더 유사도 / 파일 유사도를 2x2 격자 카드로 표시
+    def setText(self, text):
+        self._raw = text
+        super().setText(text.replace("\\", "\\\u200b").replace("/", "/\u200b"))
+
+    def text(self):
+        return self._raw
+
+
+class SimilarityPie(QWidget):
+    """
+    유사도(0~100)를 원형(Pie) 차트로 그려주는 위젯.
+    값이 음수이면 잴 대상이 없었다는 뜻이므로, 차트 대신 empty_text("파일 없음" 등)를 표시한다.
+    """
+
+    _TEXT_HEIGHT = 26  # 차트 아래 퍼센트 글자가 들어갈 높이
+
+    def __init__(self, empty_text: str):
+        super().__init__()
+        self._empty_text = empty_text
+        self._value = -1.0
+        self.setMinimumSize(110, 110)
+
+    def set_similarity(self, value: float):
+        self._value = value
+        self.update()  # 다시 그리기 예약
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        if self._value < 0:
+            painter.setPen(QColor(COLOR_TEXT_SUB))
+            font = painter.font()
+            font.setPixelSize(15)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, self._empty_text)
+            return
+
+        # 위젯 크기에 맞춰 가장 큰 정사각형 영역에 원을 그리고, 그 아래에 퍼센트를 쓴다.
+        side = min(self.width(), self.height() - self._TEXT_HEIGHT) - 8
+        x = (self.width() - side) / 2
+        y = 4
+        circle = QRectF(x, y, side, side)
+
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(COLOR_BORDER))
+        painter.drawEllipse(circle)
+
+        # Qt의 각도는 1/16도 단위, 3시 방향이 0도이고 반시계가 +방향이다.
+        # 12시 방향(90도)에서 시작해 시계 방향(-)으로 채운다.
+        value = min(self._value, 100.0)
+        painter.setBrush(QColor(COLOR_BLUE))
+        if value >= 100.0:
+            painter.drawEllipse(circle)
+        elif value > 0:
+            # 100% 미만인데 원이 꽉 차 보이면 100%로 오해하므로, 최소 1도의 빈틈은 남긴다.
+            span = min(value / 100 * 360, 359) * 16
+            painter.drawPie(circle, 90 * 16, int(-span))
+
+        painter.setPen(QColor(COLOR_TEXT))
+        font = painter.font()
+        font.setPixelSize(16)
+        font.setBold(True)
+        painter.setFont(font)
+        text_rect = QRectF(0, y + side, self.width(), self._TEXT_HEIGHT + 4)
+        # 반올림하면 99.996%가 100.00%로 보여 "전부 일치"로 오해할 수 있으므로 소수점 둘째 자리에서 버린다.
+        # (1e-9는 99.99가 99.98999...로 저장된 경우 99.98로 잘리는 것을 막기 위한 보정값)
+        shown = math.floor(self._value * 100 + 1e-9) / 100
+        if self._value < 100 and shown >= 100: # 보정값 때문에 100이 되는 경우까지 막는다
+            shown = 99.99
+        painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, f"{shown:.2f}%")
+
+
+def _make_pie_column(name: str, empty_text: str):
+    """ 유사도 카드 안에 들어갈 한 칸(이름 + 원형 차트)을 만든다. 칸 위젯과 차트 위젯을 함께 반환한다. """
+    column = QWidget()
+    layout = QVBoxLayout(column)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(4)
+
+    name_label = QLabel(name)
+    name_label.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT}; font-weight: 600;")
+    name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    pie = SimilarityPie(empty_text)
+
+    layout.addWidget(name_label)
+    layout.addWidget(pie, 1)
+    return column, pie
+
+
+# --- 5-1. 백업 개요 탭 ---
+frame_result_overview = QWidget()
+_overview_layout = QVBoxLayout(frame_result_overview)
+_overview_layout.setContentsMargins(16, 16, 16, 12)
+_overview_layout.setSpacing(12)
+
+# 원본 / 대상 경로 카드
+frame_result_paths = QWidget()
+_result_paths_layout = QHBoxLayout(frame_result_paths)
+_result_paths_layout.setContentsMargins(0, 0, 0, 0)
+_result_paths_layout.setSpacing(14)
+
+# 경로는 생략 없이 전부 보여줘야 하므로 여러 줄이 들어갈 자리를 잡아둔다.
+card_org_path, label_result_org = _make_result_card("원본 경로", wrap=True, min_height=_PATH_CARD_HEIGHT)
+card_tar_path, label_result_tar = _make_result_card("대상 경로", wrap=True, min_height=_PATH_CARD_HEIGHT)
+_result_paths_layout.addWidget(card_org_path, 1)
+_result_paths_layout.addWidget(card_tar_path, 1)
+
+_overview_layout.addWidget(frame_result_paths)
+
+# 변경 사항 / 유사도(파일, 폴더) 카드
 frame_result_cards = QWidget()
-_result_cards_layout = QGridLayout(frame_result_cards)
+_result_cards_layout = QHBoxLayout(frame_result_cards)
 _result_cards_layout.setContentsMargins(0, 0, 0, 0)
-_result_cards_layout.setHorizontalSpacing(14)
-_result_cards_layout.setVerticalSpacing(10)
-_result_cards_layout.setColumnStretch(0, 1)
-_result_cards_layout.setColumnStretch(1, 1)
-_result_cards_layout.setRowStretch(0, 1)  # 경로 카드만 남는 세로 공간을 가져간다
-_result_cards_layout.setRowStretch(1, 0)
+_result_cards_layout.setSpacing(14)
 
-# 경로는 생략 없이 전부 보여줘야 하므로 4~5줄이 들어갈 자리를 잡아둔다.
-card_org_path, label_result_org = _make_result_card("원본 폴더", wrap=True, min_height=_PATH_CARD_HEIGHT)
-card_tar_path, label_result_tar = _make_result_card("대상 폴더", wrap=True, min_height=_PATH_CARD_HEIGHT)
-# 유사도는 한 줄이면 충분하다. (검사 결과 화면에서만 쓰고, 재검사 결과 화면에서는 숨긴다)
-card_dirs_similarity, label_dirs_similarity = _make_result_card("폴더 유사도")
-card_files_similarity, label_files_similarity = _make_result_card("파일 유사도")
+card_changes = QFrame()
+card_changes.setObjectName("PanelCard")
+_changes_layout = QVBoxLayout(card_changes)
+_changes_layout.setContentsMargins(14, 10, 14, 10)
+_changes_layout.setSpacing(8)
 
-_result_cards_layout.addWidget(card_org_path, 0, 0)
-_result_cards_layout.addWidget(card_tar_path, 0, 1)
-_result_cards_layout.addWidget(card_dirs_similarity, 1, 0)
-_result_cards_layout.addWidget(card_files_similarity, 1, 1)
+_changes_title = QLabel("변경 사항")
+_changes_title.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SUB};")
+_changes_layout.addWidget(_changes_title)
 
-_result_header_layout.addWidget(frame_result_cards, 1)
+# 변경 사항 줄(라벨)들은 결과에 따라 개수가 달라지므로 이 안에 매번 새로 채운다.
+frame_changes_list = QWidget()
+_changes_list_layout = QVBoxLayout(frame_changes_list)
+_changes_list_layout.setContentsMargins(0, 4, 0, 0)
+_changes_list_layout.setSpacing(8)
+_changes_layout.addWidget(frame_changes_list)
+_changes_layout.addStretch()
 
-_result_layout.addWidget(frame_result_header, 0, 0)
+# 파일 유사도와 폴더 유사도는 한 카드 안에 차트 두 개를 나란히 놓는다.
+card_similarity = QFrame()
+card_similarity.setObjectName("PanelCard")
+_similarity_layout = QVBoxLayout(card_similarity)
+_similarity_layout.setContentsMargins(14, 10, 14, 10)
+_similarity_layout.setSpacing(6)
 
-# 버튼배열 + 하단 리스트
-frame_mid_result = QWidget()
-_mid_result_layout = QVBoxLayout(frame_mid_result)
-_mid_result_layout.setContentsMargins(0, 0, 0, 0)
-_mid_result_layout.setSpacing(10)
+_similarity_title = QLabel("유사도")
+_similarity_title.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SUB};")
+_similarity_layout.addWidget(_similarity_title)
 
-frame_btn_result = QWidget()
-_btn_result_layout = QHBoxLayout(frame_btn_result)
-_btn_result_layout.setContentsMargins(0, 0, 0, 0)
-_btn_result_layout.setSpacing(8)
+_pies_row = QHBoxLayout()
+_pies_row.setSpacing(10)
+_files_pie_column, pie_files_similarity = _make_pie_column("파일", "파일 없음")
+_dirs_pie_column, pie_dirs_similarity = _make_pie_column("폴더", "폴더 없음")
+_pies_row.addWidget(_files_pie_column, 1)
+_pies_row.addWidget(_dirs_pie_column, 1)
+_similarity_layout.addLayout(_pies_row, 1)
 
-btn_result_delete = QPushButton("삭제할 파일(n)")
-btn_result_delete2 = QPushButton("삭제할 폴더(n)")
-btn_result_copy = QPushButton("복사할 파일(n)")
-btn_result_copy2 = QPushButton("복사할 폴더(n)")
-btn_result_refresh = QPushButton("갱신할 파일(n)")
+# 윗줄(원본/대상 경로)과 같은 1:1 비율로 나눠서 위아래 카드의 세로선이 맞도록 한다.
+_result_cards_layout.addWidget(card_changes, 1)
+_result_cards_layout.addWidget(card_similarity, 1)
 
-for _btn in (btn_result_delete, btn_result_delete2, btn_result_copy,
-             btn_result_copy2, btn_result_refresh):
-    _btn.clicked.connect(lambda:None)
-    _btn_result_layout.addWidget(_btn)
-_btn_result_layout.addStretch()
+_overview_layout.addWidget(frame_result_cards, 1)
 
-_mid_result_layout.addWidget(frame_btn_result)
+# 하단 안내 문구 (2줄): 무엇을 하는지(흐린 글씨) / 무엇을 확인해야 하는지(기본 글씨)
+label_result_expl = QLabel("원본 폴더에서 대상 경로에 백업합니다.")
+label_result_expl.setStyleSheet(f"color: {COLOR_TEXT_SUB};")
+label_result_expl.setWordWrap(True)
 
-mid_result_list = QListWidget()
-mid_result_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-# 스크롤바는 QListWidget에 기본 내장되어 있음(Scrollbar 위젯을 따로 만들 필요 없음)
-mid_result_scroll = mid_result_list.verticalScrollBar()
-_mid_result_layout.addWidget(mid_result_list, 1)
+label_result_confirm = QLabel("경로와 변경사항을 확인하세요.")
+label_result_confirm.setStyleSheet(f"color: {COLOR_TEXT}; font-weight: 700;")
+label_result_confirm.setWordWrap(True)
 
-_result_layout.addWidget(frame_mid_result, 2, 0)  # 1행은 가운데 여백
+_overview_layout.addWidget(label_result_expl)
+_overview_layout.addWidget(label_result_confirm)
+
+result_tabs.addTab(frame_result_overview, "백업 개요")
+
+
+def update_changes_card(changes: dict):
+    """
+    변경 사항 카드를 채운다.
+    changes: {"삭제할 파일": n, "복사할 폴더": m, ...} 형태. 개수가 0인 항목은 표시하지 않고,
+    표시할 항목이 하나도 없으면 "변경 사항 없음"을 띄운다.
+    """
+    # 이전 검사 결과로 만든 라벨을 모두 지운다.
+    while _changes_list_layout.count():
+        item = _changes_list_layout.takeAt(0)
+        if item.widget() is not None:
+            item.widget().deleteLater()
+
+    shown = [(name, count) for name, count in changes.items() if count > 0]
+    if not shown:
+        empty = QLabel("변경 사항 없음")
+        empty.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT}; font-weight: 600;")
+        _changes_list_layout.addWidget(empty)
+        return
+
+    for name, count in shown:
+        row = QLabel(f"<span style='color:{COLOR_BLUE};'>●</span>&nbsp;&nbsp;{name}: <b>{count:,}개</b>")
+        row.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT};")
+        _changes_list_layout.addWidget(row)
+
+
+# --- 5-2. 제외 항목 선택 탭 (추후 구현) ---
+frame_result_exclude = QWidget()
+result_tabs.addTab(frame_result_exclude, "제외할 파일/폴더 선택")
 
 frame_main.addWidget(frame_center_result)
 
-# 미리보기용 더미 데이터 (원본 components.py와 동일하게 시각 확인용으로 채워둠)
-for _i in range(50):
-    mid_result_list.addItem(f"삭제 중앙 {_i + 1}")
+# 미리보기용 더미 데이터 (시각 확인용)
+label_result_org.setText(r"C:\Users\user\Documents")
+label_result_tar.setText(r"E:\Backup\Documents")
+update_changes_card({"삭제할 파일": 3, "복사할 파일": 120, "복사할 폴더": 4})
+pie_files_similarity.set_similarity(99.0)
+pie_dirs_similarity.set_similarity(100.0)
 
 
 # --- 6번 백업완료 화면 ---
+# [제목 / 설명] - [검사 시간, 백업 시간 카드 | 최적화율 카드] - [최적화 안내 문구]
+COLOR_FAIL = "#E5737A"  # 백업 실패 시 제목 색
+
 frame_center_complete = QWidget()
 _complete_layout = QVBoxLayout(frame_center_complete)
-_complete_layout.setContentsMargins(30, 36, 30, 30)
-_complete_layout.setSpacing(14)
-_complete_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+_complete_layout.setContentsMargins(36, 28, 36, 24)
+_complete_layout.setSpacing(12)
 
-label_complete = QLabel("검사한 시간 : n초")
-label_complete2 = QLabel("백업한 시간 : n초")
-label_complete3 = QLabel("최적화율 : n%")
-for _lbl in (label_complete, label_complete2, label_complete3):
-    _lbl.setStyleSheet(f"font-size: 15px; color: {COLOR_TEXT};")
-    _complete_layout.addWidget(_lbl)
+label_complete_title = QLabel("백업이 완료되었습니다!")
+label_complete_title.setStyleSheet(f"font-size: 24px; color: {COLOR_BLUE}; font-weight: 800;")
+
+
+_complete_layout.addWidget(label_complete_title)
+# 글씨와 카드 사이 위/아래 여백: 남는 세로 공간을 여백 20 : 카드 60 : 여백 20으로 나눈다.
+_complete_layout.addStretch(20)
+
+frame_complete_cards = QWidget()
+_complete_cards_layout = QGridLayout(frame_complete_cards)
+_complete_cards_layout.setContentsMargins(0, 0, 0, 0)
+_complete_cards_layout.setHorizontalSpacing(14)
+_complete_cards_layout.setVerticalSpacing(12)
+_complete_cards_layout.setColumnStretch(0, 1)
+_complete_cards_layout.setColumnStretch(1, 1)
+
+# 왼쪽: 검사 시간 / 백업 시간 카드를 위아래로 쌓는다. 숫자가 주인공이므로 값을 크게 쓴다.
+card_compare_time, label_complete = _make_result_card("검사 시간")
+card_backup_time, label_complete2 = _make_result_card("백업 시간")
+for _lbl in (label_complete, label_complete2):
+    _lbl.setStyleSheet(f"font-size: 26px; color: {COLOR_TEXT}; font-weight: 700;")
+    _lbl.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+# 오른쪽: 최적화율 카드. 최적화율도 유사도와 같은 0~100 백분율이라 같은 원형 차트를 쓴다.
+card_optimized = QFrame()
+card_optimized.setObjectName("PanelCard")
+_optimized_layout = QVBoxLayout(card_optimized)
+_optimized_layout.setContentsMargins(14, 10, 14, 10)
+_optimized_layout.setSpacing(6)
+
+_optimized_title = QLabel("최적화율")
+_optimized_title.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SUB};")
+pie_optimized = SimilarityPie("검사한 파일 없음")
+
+_optimized_layout.addWidget(_optimized_title)
+_optimized_layout.addWidget(pie_optimized, 1)
+
+_complete_cards_layout.addWidget(card_compare_time, 0, 0)
+_complete_cards_layout.addWidget(card_backup_time, 1, 0)
+_complete_cards_layout.addWidget(card_optimized, 0, 1, 2, 1)  # 두 행에 걸침
+
+_complete_layout.addWidget(frame_complete_cards, 60)
+_complete_layout.addStretch(20)
+
+label_complete3 = QLabel("최적화를 하면 다음 검사 시간을 단축시킬 수 있습니다.")
+label_complete3.setWordWrap(True)
+_complete_layout.addWidget(label_complete3)
 
 frame_main.addWidget(frame_center_complete)
+
+
+def _format_seconds(seconds: float) -> str:
+    """ 3.2 -> "3.2초", 75.0 -> "1분 15초" """
+    if seconds < 60:
+        return f"{seconds:.1f}초"
+    minutes, sec = divmod(int(seconds), 60)
+    if minutes < 60:
+        return f"{minutes}분 {sec}초"
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}시간 {minutes}분"
+
+
+def update_complete_screen(success: bool, compare_run_time: float, backup_run_time: float,
+                           optimized_percent: float):
+    """ 백업 완료 화면을 채운다. 백업에 실패한 파일이 있으면 제목을 실패용으로 바꾼다. """
+    if success:
+        label_complete_title.setText("백업이 완료되었습니다!")
+        label_complete_title.setStyleSheet(f"font-size: 24px; color: {COLOR_BLUE}; font-weight: 800;")
+    else:
+        label_complete_title.setText("백업에 문제가 있습니다")
+        label_complete_title.setStyleSheet(f"font-size: 24px; color: {COLOR_FAIL}; font-weight: 800;")
+
+    label_complete.setText(_format_seconds(compare_run_time))
+    label_complete2.setText(_format_seconds(backup_run_time))
+    pie_optimized.set_similarity(optimized_percent)
+
+    if optimized_percent >= 100:
+        label_complete3.setText("모든 파일이 최적화되어 있습니다.")
+    else:
+        label_complete3.setText("최적화를 하면 다음 검사 시간을 단축시킬 수 있습니다.")
 
 
 # --- 하단 바 ---

@@ -310,6 +310,45 @@ def get_root_size(path) -> int:
     return total_size
 
 
+def get_drive_display_name(path: str) -> str:
+    """
+    path가 들어있는 장치의 이름을 윈도우 탐색기 "내 PC"에 보이는 문자열 그대로 반환한다.
+    예) "로컬 디스크 (C:)", "내 USB (E:)"
+
+    윈도우가 아니거나 이름을 얻지 못하면 빈 문자열을 반환한다.
+    """
+    if os.name != 'nt':
+        return ""
+
+    import ctypes
+    from ctypes import wintypes
+
+    drive = os.path.splitdrive(os.path.abspath(path))[0] # "C:" 또는 네트워크 경로면 "\\서버\공유폴더"
+    if not drive:
+        return ""
+
+    class SHFILEINFOW(ctypes.Structure):
+        _fields_ = [
+            ("hIcon", wintypes.HANDLE),
+            ("iIcon", ctypes.c_int),
+            ("dwAttributes", wintypes.DWORD),
+            ("szDisplayName", wintypes.WCHAR * 260),
+            ("szTypeName", wintypes.WCHAR * 80),
+        ]
+
+    SHGFI_DISPLAYNAME = 0x200 # 탐색기에 보이는 이름을 달라는 옵션
+
+    shell32 = ctypes.windll.shell32
+    shell32.SHGetFileInfoW.argtypes = [
+        wintypes.LPCWSTR, wintypes.DWORD, ctypes.POINTER(SHFILEINFOW), wintypes.UINT, wintypes.UINT,
+    ]
+    shell32.SHGetFileInfoW.restype = ctypes.c_size_t
+
+    info = SHFILEINFOW()
+    ok = shell32.SHGetFileInfoW(drive + "\\", 0, ctypes.byref(info), ctypes.sizeof(info), SHGFI_DISPLAYNAME)
+    return info.szDisplayName if ok else ""
+
+
 
 
 
