@@ -1,13 +1,12 @@
 import os
 from pathlib import Path
 from time import sleep, time
-import shutil
 
 from system.SystemValues import SystemValues
 from system.depth import get_depth
 from system.compare import CompareResult
 from system.path import cut_path, merge_path
-from system.file import copy_dir, copy_file, move_file
+from system.file import copy_dir, copy_file, move_dir, move_file
 from system.path import merge_path
 from system.Trashbin import Trashbin
 
@@ -30,12 +29,6 @@ def backup(compare_result: CompareResult):
     remove_files(
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.files_rmv)
-    
-    SystemValues.backup_progress_msg = "파일 복사 중"
-    copy_files(
-        compare_result.org_path, 
-        compare_result.tar_path,
-        compare_result.files_copy)
 
     SystemValues.backup_progress_msg = "파일 갱신 중"
     renew_files(
@@ -43,16 +36,22 @@ def backup(compare_result: CompareResult):
         compare_result.tar_path,
         compare_result.files_renew
     )
+    
+    SystemValues.backup_progress_msg = "파일 복사 중"
+    copy_files(
+        compare_result.org_path, 
+        compare_result.tar_path,
+        compare_result.files_copy)
 
     # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
     SystemValues.backup_progress_msg = "폴더 삭제 중"
+    SystemValues.copy_working = True 
     remove_dirs( 
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.dirs_rmv
     )
 
     SystemValues.backup_progress_msg = "폴더 복사 중"
-    SystemValues.copy_working = True 
     copy_dirs(
         compare_result.org_path, 
         compare_result.tar_path,
@@ -74,7 +73,10 @@ def remove_files(root, files: list | set):
         cut = cut_path(src, get_depth(root))
         dst = os.path.join(Trashbin.get_remove_path(), cut)
         SystemValues.backup_progress_path = src
-        move_file(src, dst)
+        try:
+            move_file(src, dst)
+        except OSError:
+            pass # 실패한 파일은 건너뜀 
         SystemValues.backup_progress_val += 1
        
 
@@ -88,7 +90,10 @@ def copy_files(org_path, tar_path, files: list | set):
         cut = cut_path(src, get_depth(org_path))
         dst = os.path.join(tar_path, cut)
         SystemValues.backup_progress_path = src
-        copy_file(src, dst)
+        try:
+            copy_file(src, dst)
+        except OSError:
+            pass # 실패한 파일은 건너뜀 
         SystemValues.backup_progress_val += 1
 
 
@@ -99,16 +104,20 @@ def renew_files(org_path, tar_path, files: list):
     """
     # 이전 파일 보관 중
     remove_files(tar_path, files)
-    SystemValues.backup_progress_val = 0  
-    SystemValues.backup_progress_max = len(files)
     
     # 새로운 파일 복사 중 
+    SystemValues.backup_progress_val = 0  
+    SystemValues.backup_progress_max = len(files)
     for dst in files:
         cut = cut_path(dst, get_depth(tar_path))
         src = os.path.join(org_path, cut)
         SystemValues.backup_progress_path = cut
-        copy_file(src, dst)
+        try:
+            copy_file(src, dst)
+        except OSError:
+            pass # 실패한 파일은 건너뜀 
         SystemValues.backup_progress_val += 1
+
 
 def remove_dirs(root, dirs: list):
     """ 
@@ -121,7 +130,10 @@ def remove_dirs(root, dirs: list):
         cut = cut_path(src, get_depth(root))
         dst = os.path.join(Trashbin.get_remove_path(), cut)
         SystemValues.backup_progress_path = src
-        shutil.move(src, dst)
+        try:
+            move_dir(src, dst)
+        except OSError:
+            pass # 실패한 폴더는 건너뜀 (aftercheck에서 다시 걸러짐)
         SystemValues.backup_progress_val += 1
     
 
@@ -137,7 +149,10 @@ def copy_dirs(org_path, tar_path, dirs: list):
         cut = cut_path(src, get_depth(org_path))
         dst = os.path.join(tar_path, cut)
         SystemValues.backup_progress_path = src
-        copy_dir(src, dst)
+        try:
+            copy_dir(src, dst)
+        except OSError:
+            pass # 실패한 폴더는 건너뜀 (aftercheck에서 다시 걸러짐)
         SystemValues.backup_progress_val += 1
         
 
@@ -152,21 +167,27 @@ def boost(compare_result: CompareResult):
     """
     SystemValues.backup_progress_val = 0  
     SystemValues.backup_progress_max = len(compare_result.files_same)
+    count = 0
     
     for rel_path in compare_result.files_same:
         SystemValues.backup_progress_path = rel_path
         file1 = merge_path(compare_result.org_path, rel_path)
         file2 = merge_path(compare_result.tar_path, rel_path)
 
-        time1 = os.stat(file1).st_mtime
-        time2 = os.stat(file2).st_mtime
-        if time1 != time2:
-            # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
-            # -> 다음에 검사할때 검사 시간이 단축됨
-            os.utime(file2, (time1, time1))
+        try:
+            time1 = os.stat(file1).st_mtime
+            time2 = os.stat(file2).st_mtime
+            if time1 != time2:
+                # 원본 파일의 수정된 시간을 대상 파일에 덮어씌움 
+                # -> 다음에 검사할때 검사 시간이 단축됨
+                os.utime(file2, (time1, time1))
+            count += 1 # 위 if문을 지나면 결국 time1 == time2이므로 카운팅함
+        except OSError:
+            pass # 최적화에 실패한 파일은 건너뜀 
+        
         SystemValues.backup_progress_val += 1
 
-    SystemValues.optimized_percent = 100
+    compare_result.optimized_percent = count / len(compare_result.files_same) * 100
 
 
 # 최적화 테스트용 함수
@@ -191,4 +212,4 @@ def check_opti_rate(compare_result: CompareResult):
             
         SystemValues.backup_progress_val += 1
 
-    SystemValues.optimized_percent = count / len(compare_result.files_same) * 100
+    compare_result.optimized_percent = count / len(compare_result.files_same) * 100
