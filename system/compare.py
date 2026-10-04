@@ -163,12 +163,24 @@ def compare_preprocessing(org_path, tar_path):
 
     next_scan = [""] # 검사해야할 폴더이며, 루트 폴더를 의미하는 ""를 추가하였음
     while len(next_scan) > 0:  # 같은 폴더 산출
-        same_folder = next_scan.pop(0) # org_path와 tar_path에 동시에 들어있는 폴더의 상대경로
+        same_folder = next_scan.pop(0) # org_path와 tar_path에 동시에 들어있는 폴더의 상대경로        
         org_dir = os.path.join(org_path, same_folder) # 절대경로 
         tar_dir = os.path.join(tar_path, same_folder) # 절대경로
 
-        org_entries = get_listdir_split(org_dir) 
-        tar_entries = get_listdir_split(tar_dir) 
+        try:
+            org_entries = get_listdir_split(org_dir) 
+            tar_entries = get_listdir_split(tar_dir) 
+        except PermissionError:
+            # 사용자가 선택한 폴더 자체가 문제인 경우 에러를 띄워 검사를 중단시킴
+            if same_folder == "":
+                raise 
+
+            # 교집합과 전체집합에서 각각 1씩 뺌
+            return_same.remove(same_folder) 
+            dirs_intersection_set_count -= 1
+            dirs_universal_set_count -= 1 
+            continue
+
         org_dirs = org_entries.dirs.keys()
         tar_dirs = tar_entries.dirs.keys()
         common_name_dirs = org_dirs & tar_dirs # key끼리 교집합 가능함
