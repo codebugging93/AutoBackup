@@ -70,11 +70,7 @@ def copy_dir(src, dst, metadata=True):
         dst_dir = merge_path(dst, cut) # 복사 목적지 경로
         # src의 내부 폴더 src_dir을 dst의 내부 폴더 dst_dir로 복사함
 
-        try: # 폴더 생성 시도
-            os.makedirs(dst_dir, exist_ok=True) 
-        except OSError: # 실패시 복사 자체를 스킵
-            SystemValues.copy_progress_val += len(files) # 건너뛴 파일에도 진행률 반영
-            continue 
+        os.makedirs(dst_dir, exist_ok=True) 
 
         for name in files:
             src_file = merge_path(src_dir, name)
@@ -87,7 +83,52 @@ def copy_dir(src, dst, metadata=True):
             SystemValues.copy_progress_val += 1
 
 
+def move_dir(src, dst, mkdirs=True, metadata=True):
+    """
+    폴더를 src에서 dst로 옮긴다.
 
-def move_folder(src, dst):
-    """ 나중에 Trashbin 사용자 선택 기능을 넣을 때 세부 구현. """
-    shutil.move(src, dst)
+    같은 드라이브라면 os.rename으로 빠르게 옮겨지지만, 
+    다른 드라이브라면 copy_dir을 실행후 원본 폴더는 제거한다.
+    """
+    # 같은 드라이브라면 os.rename으로 빠르게 옮김
+    if os.path.splitdrive(src)[0].lower() == os.path.splitdrive(dst)[0].lower():
+        if mkdirs:
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+        os.rename(src, dst)
+        return
+
+    """ 아래 코드는 copy_dir을 그대로 갖고와서 일부 수정한 것이다. """
+
+    SystemValues.copy_progress_max = 0
+    SystemValues.copy_progress_val = 0
+    SystemValues.copy_progress_path = ""
+
+    # os.walk를 이용해서 각 root마다 files를 복사해야함
+    for _, _, files in os.walk(src):
+        SystemValues.copy_progress_max += len(files)
+
+    src_depth = get_depth(src)
+    for src_dir, dirs, files in os.walk(src, topdown=False):
+        cut = cut_path(src_dir, src_depth) 
+        dst_dir = merge_path(dst, cut) # 복사 목적지 경로
+        # src의 내부 폴더 src_dir을 dst의 내부 폴더 dst_dir로 복사함
+
+        os.makedirs(dst_dir, exist_ok=True) # 의도적인 try-except 미사용
+
+        for name in files:
+            src_file = merge_path(src_dir, name)
+            dst_file = merge_path(dst_dir, name)
+            SystemValues.copy_progress_path = src_file
+            try:
+                move_file(src_file, dst_file, metadata=metadata)
+            except OSError:
+                pass # 실패한 파일은 건너뛰고 폴더의 나머지 파일을 계속 복사함
+            SystemValues.copy_progress_val += 1
+
+        try: # 전부 비운 폴더 삭제 시도
+            os.rmdir(src_dir)
+        except OSError: # 실패시 넘김 
+            pass 
+
+
+    
