@@ -330,9 +330,9 @@ def update_result_listbox(data_list):
     """결과 리스트박스의 내용을 비우고 새로운 데이터(정렬됨)를 삽입합니다."""
     mid_result_list.clear()
     # 데이터가 set인 경우를 대비해 정렬된 리스트로 변환하여 삽입
-    for item in sorted(list(data_list)):
-        item = item.removeprefix(PREFIX_MAX_PATH)
-        mid_result_list.addItem(item)
+    # addItem으로 하나씩 넣으면 항목이 많을 때 느리므로 addItems로 한 번에 넣는다.
+    items = [item.removeprefix(PREFIX_MAX_PATH) for item in sorted(data_list)]
+    mid_result_list.addItems(items)
 
 
 # --- 이벤트 핸들러 ---
@@ -411,11 +411,11 @@ def run_backup():
     UiUpdater.start(UiUpdater.update_backup)
     SystemValues.backup_start_time = time()
 
-    backup(AppData.compare_result)
     try:
+        backup(AppData.compare_result)
         failed = aftercheck(AppData.compare_result, AppData.fast_scan)
     except Exception:
-        cancel_task("검사 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        cancel_task("백업 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
         return
 
     AppData.backup_run_time = time() - SystemValues.backup_start_time

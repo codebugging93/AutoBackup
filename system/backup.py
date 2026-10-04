@@ -187,7 +187,10 @@ def boost(compare_result: CompareResult):
         
         SystemValues.backup_progress_val += 1
 
-    compare_result.optimized_percent = count / len(compare_result.files_same) * 100
+    if len(compare_result.files_same) != 0:
+        compare_result.optimized_percent = count / len(compare_result.files_same) * 100
+    else:
+        compare_result.optimized_percent = 0
 
 
 # 최적화 테스트용 함수
@@ -212,4 +215,7 @@ def check_opti_rate(compare_result: CompareResult):
             
         SystemValues.backup_progress_val += 1
 
-    compare_result.optimized_percent = count / len(compare_result.files_same) * 100
+    if len(compare_result.files_same) != 0:
+        compare_result.optimized_percent = count / len(compare_result.files_same) * 100
+    else:
+        compare_result.optimized_percent = 0

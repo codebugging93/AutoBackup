@@ -1,5 +1,8 @@
 from cx_Freeze import Executable, setup
-from system.constants import APPNAME, VERSION
+from system.constants import APPNAME
+
+
+버전 = "0.2.1"
 
 
 executables = [Executable(
@@ -16,7 +19,7 @@ build_exe_options = {
 
 setup(
     name=APPNAME,
-    version=VERSION,
+    version=버전,
     description=APPNAME,
     options={"build_exe": build_exe_options},
     executables=executables,
