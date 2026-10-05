@@ -26,6 +26,16 @@ class CompareResult:
     (양쪽 모두 하위 폴더가 없거나, 공통 폴더 안에 파일이 하나도 없는 경우)
     겹치는 것이 없어서 0%인 것과 셀 대상 자체가 없는 것은 다른 상황이므로 구분한다.
 
+    dirs_intersection_set_count : 폴더 이름 기준 교집합의 크기
+    dirs_universal_set_count    : 폴더 이름 기준 전체집합의 크기
+    files_intersection_set_count: 파일 이름 기준 교집합의 크기
+    files_universal_set_count   : 파일 이름 기준 전체집합의 크기
+
+    위 네 값은 유사도를 계산할 때 쓴 값이다.
+    여러 result의 유사도를 합칠 때는 백분율끼리 더할 수 없으므로 이 값들을 더해서 다시 계산한다.
+
+    optimized_count: 최적화된 파일의 개수 (optimized_percent의 분자, 분모는 len(files_same))
+
     optimized_percent: 최적화된 파일의 비율(백분율)
     """
 
@@ -40,12 +50,18 @@ class CompareResult:
         self.dirs_similarity = -1.0 # -1은 잴 대상이 없다는 뜻
         self.files_similarity = -1.0
 
+        self.dirs_intersection_set_count = 0
+        self.dirs_universal_set_count = 0
+        self.files_intersection_set_count = 0
+        self.files_universal_set_count = 0
+
         self.files_copy = []
         self.files_rmv = []
         self.files_renew = []
         self.files_same = []
 
         self.optimized_percent = 0.0
+        self.optimized_count = 0
 
 
     def print(self):
@@ -222,6 +238,12 @@ def compare_preprocessing(org_path, tar_path, root_only=False, skip_hidden=False
     result.dirs_rmv = return_rmv 
     result.dirs_same = return_same
 
+    # 유사도 계산에 쓰는 집합 크기도 함께 기록한다.
+    result.dirs_intersection_set_count = dirs_intersection_set_count
+    result.dirs_universal_set_count = dirs_universal_set_count
+    result.files_intersection_set_count = files_intersection_set_count
+    result.files_universal_set_count = files_universal_set_count
+
     # 폴더 유사도 계산
     if dirs_universal_set_count != 0:
         result.dirs_similarity = dirs_intersection_set_count / dirs_universal_set_count * 100
@@ -326,6 +348,7 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
     result.files_rmv = return_rmv
     result.files_renew = return_renew
     result.files_same = return_same
+    result.optimized_count = SystemValues.optimized_count # 여러 result의 최적화율을 합칠 때 쓴다
 
     # 최적화율 계산
     if len(result.files_same) != 0:
@@ -334,3 +357,51 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
         result.optimized_percent = 0
 
     return result
+
+
+def get_files_similarity(results: list[CompareResult]) -> float:
+    """
+    여러 result의 교집합/전체집합 크기를 모두 더해서 파일 이름 기준 종합 유사도(백분율)를 계산한다.
+    셀 파일이 하나도 없으면 -1을 반환한다.
+    """
+    intersection = 0
+    universal = 0
+    for result in results:
+        intersection += result.files_intersection_set_count
+        universal += result.files_universal_set_count
+
+    if universal == 0:
+        return -1.0
+    return intersection / universal * 100
+
+
+def get_dirs_similarity(results: list[CompareResult]) -> float:
+    """
+    여러 result의 교집합/전체집합 크기를 모두 더해서 폴더 이름 기준 종합 유사도(백분율)를 계산한다.
+    셀 폴더가 하나도 없으면 -1을 반환한다.
+    """
+    intersection = 0
+    universal = 0
+    for result in results:
+        intersection += result.dirs_intersection_set_count
+        universal += result.dirs_universal_set_count
+
+    if universal == 0:
+        return -1.0
+    return intersection / universal * 100
+
+
+def get_optimized_percent(results: list[CompareResult]) -> float:
+    """
+    여러 result의 최적화된 파일 수와 동일한 파일 수를 모두 더해서 종합 최적화율(백분율)을 계산한다.
+    동일한 파일이 하나도 없으면 0을 반환한다. (compare_files와 같은 규칙)
+    """
+    optimized = 0
+    same = 0
+    for result in results:
+        optimized += result.optimized_count
+        same += len(result.files_same)
+
+    if same == 0:
+        return 0.0
+    return optimized / same * 100
