@@ -18,14 +18,18 @@ from PySide6.QtCore import QObject, QRectF, QSize, Qt, QThread, Signal
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QProgressBar,
     QPushButton,
     QSizePolicy,
     QStackedWidget,
+    QStyle,
     QTabWidget,
     QVBoxLayout,
     QWidget,
@@ -96,9 +100,6 @@ QWidget {{
     background-color: {COLOR_BG};
     border: 1px solid {COLOR_BORDER};
     border-radius: 12px;
-}}
-#PanelCard[selected="true"] {{
-    border: 2px solid {COLOR_BLUE};
 }}
 #IconButton {{
     border: 2px solid {COLOR_BORDER};
@@ -384,79 +385,282 @@ _select_layout.addWidget(label_tar_path, _SEL_ROW_PATH, _SEL_COL_TAR, _PATH_ALIG
 frame_main.addWidget(frame_center_select)
 
 
-# --- 3번 검사선택 화면 ---
-frame_center_check = QWidget()
-_check_layout = QHBoxLayout(frame_center_check)
-_check_layout.setContentsMargins(40, 40, 40, 40)
-_check_layout.setSpacing(24)
+# --- 2-1번 백업 범위 선택 화면 ---
+# 원본과 대상 폴더 바로 아래의 내용물을 집합으로 나눠서 보여주고, 무엇을 백업할지 고르게 한다.
+#   1행 왼쪽: 복사할 항목 (원본에만 있음) / 1행 오른쪽: 삭제할 항목 (대상에만 있음)
+#   2행     : 검사할 항목 (양쪽에 다 있음)
+frame_center_items = QWidget()
+_items_layout = QVBoxLayout(frame_center_items)
+_items_layout.setContentsMargins(24, 16, 24, 16)
+_items_layout.setSpacing(12)
 
-# 좌측 빠른검사 프레임
-frame_fast_check = QWidget()
-frame_fast_check.setObjectName("PanelCard")
-_fast_layout = QVBoxLayout(frame_fast_check)
-_fast_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-_fast_layout.setContentsMargins(20, 30, 20, 30)
-_fast_layout.setSpacing(10)
+label_items_title = QLabel("백업할 폴더를 선택해주세요")
+label_items_title.setStyleSheet(f"font-size: 17px; color: {COLOR_TEXT}; font-weight: 700;")
+_items_layout.addWidget(label_items_title)
 
-label_fast_check = QLabel("빠른검사")
-label_fast_check.setObjectName("HeaderLabel")
-label_fast_check.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-label_fast_expl = QLabel("파일의 메타데이터를 기반으로\n빠른 검사를 진행합니다.")
-label_fast_expl.setObjectName("SubLabel")
-label_fast_expl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-btn_fast_sel = QPushButton("선택")
-btn_fast_sel.setObjectName("PrimaryButton")
-btn_fast_sel.setFixedWidth(130)
-
-_fast_layout.addWidget(label_fast_check)
-_fast_layout.addWidget(label_fast_expl)
-_fast_layout.addSpacing(10)
-_fast_layout.addWidget(btn_fast_sel, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-_check_layout.addWidget(frame_fast_check, 1)
-
-# 우측 정밀검사 프레임
-fram_detail = QWidget()
-fram_detail.setObjectName("PanelCard")
-_detail_layout = QVBoxLayout(fram_detail)
-_detail_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-_detail_layout.setContentsMargins(20, 30, 20, 30)
-_detail_layout.setSpacing(10)
-
-label_det_check = QLabel("정밀검사")
-label_det_check.setObjectName("HeaderLabel")
-label_det_check.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-label_det_expl = QLabel("파일을 바이트 단위로 정밀 검사합니다.\n시간이 오래 걸릴 수 있습니다.")
-label_det_expl.setObjectName("SubLabel")
-label_det_expl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-btn_det_sel = QPushButton("선택")
-btn_det_sel.setObjectName("PrimaryButton")
-btn_det_sel.setFixedWidth(130)
-
-_detail_layout.addWidget(label_det_check)
-_detail_layout.addWidget(label_det_expl)
-_detail_layout.addSpacing(10)
-_detail_layout.addWidget(btn_det_sel, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-_check_layout.addWidget(fram_detail, 1)
-
-frame_main.addWidget(frame_center_check)
+# 세 목록이 함께 쓰는 스타일 (objectName이 같으므로 같은 문자열을 각 목록에 입힌다)
+_BACKUP_LIST_STYLE = f"""
+#BackupItems {{
+    border: none;
+    background-color: transparent;
+}}
+#BackupItems::item {{
+    padding: 0px 4px;
+    height: 26px; /* 윈도우 11 기본 스타일은 행을 터치용으로 높게(약 40px) 잡으므로 직접 지정한다 */
+}}
+/* 체크박스: 해제 = 흰 상자 + 회색 테두리, 체크 = 파란색으로 채움 */
+#BackupItems::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1px solid {COLOR_TEXT_SUB};
+    border-radius: 4px;
+    background-color: white;
+}}
+#BackupItems::indicator:checked {{
+    border-color: {COLOR_BLUE};
+    background-color: {COLOR_BLUE};
+    image: url({get_image("check.svg").replace(os.sep, "/")}); /* 흰색 체크 표시 */
+}}
+/* 스크롤바: 얇고 둥근 막대 */
+#BackupItems QScrollBar:vertical {{
+    background: transparent;
+    width: 10px;
+    margin: 2px 0px 2px 0px;
+}}
+#BackupItems QScrollBar::handle:vertical {{
+    background: {COLOR_BORDER};
+    border-radius: 4px;
+    min-height: 30px;
+}}
+#BackupItems QScrollBar::handle:vertical:hover {{
+    background: {COLOR_TEXT_SUB};
+}}
+#BackupItems QScrollBar::add-line:vertical, #BackupItems QScrollBar::sub-line:vertical {{
+    height: 0px;
+}}
+#BackupItems QScrollBar::add-page:vertical, #BackupItems QScrollBar::sub-page:vertical {{
+    background: transparent;
+}}
+"""
 
 
-def update_check_mode_cards(fast_scan: bool):
-    """ 빠른검사/정밀검사 중 선택된 쪽 카드에 파란 테두리를 두른다. """
-    for card, selected in ((frame_fast_check, fast_scan), (fram_detail, not fast_scan)):
-        card.setProperty("selected", selected)
-        # 속성만 바꾸면 스타일시트가 다시 적용되지 않으므로 직접 다시 입혀준다.
-        card.style().unpolish(card)
-        card.style().polish(card)
+def _checkbox_style(object_name: str, font_size: int, color: str) -> str:
+    """ 목록의 체크박스와 같은 모양의 QCheckBox 스타일. (일부만 체크된 상태는 옅은 파랑으로 채움) """
+    return f"""
+#{object_name} {{
+    font-size: {font_size}px;
+    color: {color};
+    spacing: 8px;
+}}
+#{object_name}::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1px solid {COLOR_TEXT_SUB};
+    border-radius: 4px;
+    background-color: white;
+}}
+#{object_name}::indicator:checked {{
+    border-color: {COLOR_BLUE};
+    background-color: {COLOR_BLUE};
+    image: url({get_image("check.svg").replace(os.sep, "/")});
+}}
+#{object_name}::indicator:indeterminate {{
+    border-color: {COLOR_BLUE};
+    background-color: {COLOR_BLUE_SOFT};
+}}
+#{object_name}::indicator:disabled {{
+    border-color: {COLOR_BORDER};
+    background-color: {COLOR_BG};
+}}
+#{object_name}:disabled {{
+    color: {COLOR_BORDER};
+}}
+"""
 
 
-update_check_mode_cards(True)  # 기본값은 빠른검사 (AppData.fast_scan의 기본값과 동일)
+_select_all_boxes = {}  # 목록 -> 그 칸의 "전체 선택" 체크박스
+
+
+def _checkable_items(item_list: QListWidget) -> list:
+    """ 목록에서 체크박스가 있는 행만 돌려준다. ("현재 없음" 행 제외) """
+    items = []
+    for i in range(item_list.count()):
+        item = item_list.item(i)
+        if item.data(Qt.ItemDataRole.CheckStateRole) is not None:
+            items.append(item)
+    return items
+
+
+def update_select_all(item_list: QListWidget):
+    """ 목록의 체크 상태에 맞춰 "전체 선택" 체크박스를 맞춘다. (전부 = 체크 / 일부 = 중간 / 없음 = 해제) """
+    box = _select_all_boxes[item_list]
+    items = _checkable_items(item_list)
+    checked = 0
+    for item in items:
+        if item.checkState() == Qt.CheckState.Checked:
+            checked += 1
+
+    box.setEnabled(len(items) > 0) # 고를 것이 없는 칸("현재 없음")에서는 누를 수 없게 한다
+    if len(items) > 0 and checked == len(items):
+        box.setCheckState(Qt.CheckState.Checked)
+    elif checked == 0:
+        box.setCheckState(Qt.CheckState.Unchecked)
+    else:
+        box.setCheckState(Qt.CheckState.PartiallyChecked)
+
+
+def _select_all_clicked(item_list: QListWidget):
+    """ "전체 선택"을 누르면: 전부 체크되어 있으면 전부 해제, 아니면 전부 체크 """
+    items = _checkable_items(item_list)
+    all_checked = True
+    for item in items:
+        if item.checkState() != Qt.CheckState.Checked:
+            all_checked = False
+
+    new_state = Qt.CheckState.Unchecked if all_checked else Qt.CheckState.Checked
+    for item in items:
+        item.setCheckState(new_state)
+    update_select_all(item_list)
+
+
+def toggle_backup_item(item: QListWidgetItem):
+    """ 행을 클릭하면 체크 상태를 뒤집는다. 체크박스가 없는 행("현재 없음")은 무시한다. """
+    if item.data(Qt.ItemDataRole.CheckStateRole) is None:
+        return
+    if item.checkState() == Qt.CheckState.Checked:
+        item.setCheckState(Qt.CheckState.Unchecked)
+    else:
+        item.setCheckState(Qt.CheckState.Checked)
+    update_select_all(item.listWidget())
+
+
+def _make_scope_section():
+    """ 범위 화면의 칸 하나(제목 + 전체 선택 + 체크박스 목록)를 만든다. 카드, 제목 라벨, 목록을 함께 반환한다. """
+    card = QFrame()
+    card.setObjectName("PanelCard")
+    layout = QVBoxLayout(card)
+    layout.setContentsMargins(14, 10, 14, 8)
+    layout.setSpacing(4)
+
+    title = QLabel("")
+    title.setStyleSheet(f"font-size: 14px; color: {COLOR_TEXT}; font-weight: 700;")
+
+    select_all = QCheckBox()
+    select_all.setObjectName("SelectAllCheck")
+    select_all.setToolTip("전체 선택")
+    select_all.setTristate(True) # 일부만 체크된 상태를 보여주기 위함 (누를 때는 전체 체크/해제만 함)
+    select_all.setCursor(Qt.CursorShape.PointingHandCursor)
+    # 글자가 없으므로 글자용 간격(spacing)은 없앤다
+    select_all.setStyleSheet(_checkbox_style("SelectAllCheck", 12, COLOR_TEXT_SUB) + "#SelectAllCheck { spacing: 0px; }")
+
+    header = QHBoxLayout()
+    header.setContentsMargins(7, 0, 0, 0) # 아래 목록의 체크박스와 세로줄을 맞춤
+    header.setSpacing(8)
+    header.addWidget(select_all) # 제목 왼쪽에 둔다
+    header.addWidget(title)
+    header.addStretch()
+
+    item_list = QListWidget()
+    item_list.setObjectName("BackupItems")
+    # 행을 "선택"하는 기능은 쓰지 않는다. 클릭하면 체크만 바뀐다.
+    item_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+    item_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+    item_list.setIconSize(QSize(16, 16))
+    item_list.setStyleSheet(_BACKUP_LIST_STYLE)
+    item_list.itemClicked.connect(toggle_backup_item)
+
+    _select_all_boxes[item_list] = select_all
+    select_all.clicked.connect(lambda _checked=False, l=item_list: _select_all_clicked(l))
+
+    layout.addLayout(header)
+    layout.addWidget(item_list, 1)
+    return card, title, item_list
+
+
+card_copy_items, label_copy_items, list_copy_items = _make_scope_section()
+card_delete_items, label_delete_items, list_delete_items = _make_scope_section()
+card_check_items, label_check_items, list_check_items = _make_scope_section()
+
+# 격자: 1행과 2행은 50:50, 1행의 두 칸도 50:50
+frame_scope_grid = QWidget()
+_scope_grid_layout = QGridLayout(frame_scope_grid)
+_scope_grid_layout.setContentsMargins(0, 0, 0, 0)
+_scope_grid_layout.setHorizontalSpacing(12)
+_scope_grid_layout.setVerticalSpacing(12)
+_scope_grid_layout.setRowStretch(0, 1)
+_scope_grid_layout.setRowStretch(1, 1)
+_scope_grid_layout.setColumnStretch(0, 1)
+_scope_grid_layout.setColumnStretch(1, 1)
+
+_scope_grid_layout.addWidget(card_copy_items, 0, 0)
+_scope_grid_layout.addWidget(card_delete_items, 0, 1)
+_scope_grid_layout.addWidget(card_check_items, 1, 0, 1, 2)  # 2행은 두 칸에 걸침
+
+_items_layout.addWidget(frame_scope_grid, 1)
+
+# 검사 방식: 체크 = 빠른검사, 해제 = 정밀검사 (AppData.fast_scan과 연결은 functions.py에서)
+check_fast_scan = QCheckBox("빠른 검사")
+check_fast_scan.setObjectName("FastScanCheck")
+check_fast_scan.setChecked(True)
+check_fast_scan.setCursor(Qt.CursorShape.PointingHandCursor)
+check_fast_scan.setStyleSheet(_checkbox_style("FastScanCheck", 13, COLOR_TEXT))
+_items_layout.addWidget(check_fast_scan, alignment=Qt.AlignmentFlag.AlignRight) # 다음 버튼이 있는 오른쪽에 둔다
+
+frame_main.addWidget(frame_center_items)
+
+ICON_DIR = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_DirIcon)
+ICON_FILE = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon)
+FILES_ITEM_KEY = None
+
+
+def add_backup_item(item_list: QListWidget, icon, text, key):
+    """ 목록에 체크된 행 하나를 추가한다. key는 폴더 이름이고, 파일 개수 행은 FILES_ITEM_KEY다. """
+    item = QListWidgetItem(icon, text)
+    item.setData(Qt.ItemDataRole.UserRole, key)
+    # ItemIsUserCheckable을 빼서 체크박스를 직접 눌러도 Qt가 따로 토글하지 않게 한다.
+    # 체크는 행 클릭(toggle_backup_item) 한 곳에서만 바뀌므로 두 번 토글되는 일이 없다.
+    item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+    item.setCheckState(Qt.CheckState.Checked)
+    item_list.addItem(item)
+
+
+def add_empty_item(item_list: QListWidget):
+    """ 칸에 아무것도 없을 때 "현재 없음"을 표시한다. 체크박스가 없어 선택 결과에 들어가지 않는다. """
+    item = QListWidgetItem("현재 없음")
+    item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+    item.setForeground(QColor(COLOR_TEXT_SUB))
+    item_list.addItem(item)
+
+
+def get_checked_backup_items(item_list: QListWidget) -> list:
+    """ 목록에서 체크된 폴더의 이름 목록을 반환한다. (파일 개수 행은 포함하지 않음) """
+    names = []
+    for i in range(item_list.count()):
+        item = item_list.item(i)
+        key = item.data(Qt.ItemDataRole.UserRole)
+        if key is not FILES_ITEM_KEY and item.checkState() == Qt.CheckState.Checked:
+            names.append(key)
+    return names
+
+
+def is_backup_files_checked(item_list: QListWidget) -> bool:
+    """ 목록의 파일 개수 행이 체크되어 있는지 반환한다. 파일이 없어서 행이 없으면 False. """
+    for i in range(item_list.count()):
+        item = item_list.item(i)
+        if item.data(Qt.ItemDataRole.CheckStateRole) is None:
+            continue  # "현재 없음" 행
+        if item.data(Qt.ItemDataRole.UserRole) is FILES_ITEM_KEY:
+            return item.checkState() == Qt.CheckState.Checked
+    return False
+
+
+def is_any_backup_item_checked() -> bool:
+    """ 범위 화면의 세 목록 중 체크된 항목이 하나라도 있는지 반환한다. """
+    for item_list in (list_copy_items, list_delete_items, list_check_items):
+        for i in range(item_list.count()):
+            if item_list.item(i).checkState() == Qt.CheckState.Checked:
+                return True
+    return False
 
 
 # --- 4번 프로그레스바 화면 ---
@@ -524,7 +728,7 @@ _bottom_progress_layout.addWidget(bottom_progressbar)
 _bottom_progress_layout.addWidget(label_bottom_progress3)
 
 _progress_layout.addWidget(frame_bottom_progress)
-frame_bottom_progress.hide()  # SystemValues.copy_working이 True일 때만 표시(추후 updater 이식 시 연결)
+frame_bottom_progress.hide()  # SystemValues.bottom_progress_visible이 True일 때만 표시 (gui/updater.py가 처리)
 
 _progress_layout.addStretch()
 
@@ -893,6 +1097,7 @@ _complete_layout.addStretch(20)
 
 label_complete3 = QLabel("최적화를 하면 다음 검사 시간을 단축시킬 수 있습니다.")
 label_complete3.setWordWrap(True)
+label_complete3.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter) # 화면 오른쪽에 붙임
 _complete_layout.addWidget(label_complete3)
 
 frame_main.addWidget(frame_center_complete)
@@ -963,7 +1168,7 @@ _bottombar_layout.addWidget(btn_begin)
 
 # --- 프레임 변경 배열 (기존 components.py의 frames / labels와 동일한 용도) ---
 frames = [
-    frame_center_home, frame_center_select, frame_center_check,
+    frame_center_home, frame_center_select, frame_center_items,
     frame_center_progress, frame_center_result, frame_center_complete,
 ]
 
