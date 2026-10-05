@@ -277,18 +277,50 @@ def show_compare_result():
     btn_Previous.clicked.connect(btn_prev_compare_again)
     btn_Previous.show() # 완료 화면 등에서 숨겨진 채로 넘어와도 다시 보이게 한다
 
-    # 변경 사항 카드 업데이트
+    # 0번 루트 result가 사용자가 고른 두 폴더를 갖고 있다
+    root_result = AppData.compare_results[0]
+
+    # 모든 result의 변경 항목을 종류별로 모은다.
+    # 화면에는 절대경로로 보여주되, 260자 경로 제한 우회용 접두사(\\?\)는 뗀다.
+    # (복사할 것은 원본 쪽, 삭제/변경할 것은 대상 쪽 경로이다)
+    dirs_rmv = []
+    dirs_copy = []
+    files_rmv = []
+    files_renew = []
+    files_copy = []
+    for result in AppData.compare_results:
+        for path in result.dirs_rmv:
+            dirs_rmv.append(path.removeprefix(PREFIX_MAX_PATH))
+        for path in result.dirs_copy:
+            dirs_copy.append(path.removeprefix(PREFIX_MAX_PATH))
+        for path in result.files_rmv:
+            files_rmv.append(path.removeprefix(PREFIX_MAX_PATH))
+        for path in result.files_renew:
+            files_renew.append(path.removeprefix(PREFIX_MAX_PATH))
+        for path in result.files_copy:
+            files_copy.append(path.removeprefix(PREFIX_MAX_PATH))
+
+    # 변경 사항 카드 (개요 탭)
     update_changes_card({
-        "삭제할 파일": len(res.files_rmv),
-        "삭제할 폴더": len(res.dirs_rmv),
-        "복사할 파일": len(res.files_copy),
-        "복사할 폴더": len(res.dirs_copy),
-        "변경할 파일": len(res.files_renew),
+        "삭제할 폴더": len(dirs_rmv),
+        "복사할 폴더": len(dirs_copy),
+        "삭제할 파일": len(files_rmv),
+        "변경할 파일": len(files_renew),
+        "복사할 파일": len(files_copy),
+    })
+
+    # 상세 보기 탭 (같은 순서)
+    update_detail_tabs({
+        "삭제할 폴더": dirs_rmv,
+        "복사할 폴더": dirs_copy,
+        "삭제할 파일": files_rmv,
+        "변경할 파일": files_renew,
+        "복사할 파일": files_copy,
     })
 
     # 경로 표시
-    label_org_path.setText(res.org_path.removeprefix(PREFIX_MAX_PATH))
-    label_tar_path.setText(res.tar_path.removeprefix(PREFIX_MAX_PATH))
+    label_org_path.setText(root_result.org_path.removeprefix(PREFIX_MAX_PATH))
+    label_tar_path.setText(root_result.tar_path.removeprefix(PREFIX_MAX_PATH))
     # 결과 화면의 경로 카드도 같은 값으로 채운다.
     label_result_org.setText(label_org_path.text())
     label_result_tar.setText(label_tar_path.text())

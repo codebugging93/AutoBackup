@@ -738,7 +738,7 @@ frame_main.addWidget(frame_center_progress)
 # --- 5번 검사결과표시 화면 ---
 # 크롬 탭처럼 생긴 탭 두 개로 구성한다.
 #   1) 백업 개요: 경로 / 변경 사항 / 유사도 등 한눈에 볼 정보
-#   2) 제외 항목 선택: 백업에서 뺄 파일/폴더를 고르는 화면 (아직 빈 탭)
+#   2) 상세 보기: 변경 사항을 종류별 탭으로 나눠 실제 항목을 하나하나 보여주는 화면
 frame_center_result = QWidget()
 _result_layout = QVBoxLayout(frame_center_result)
 _result_layout.setContentsMargins(20, 14, 20, 14)
@@ -1028,9 +1028,80 @@ def update_changes_card(changes: dict):
         _changes_list_layout.addWidget(row)
 
 
-# --- 5-2. 제외 항목 선택 탭 (추후 구현) ---
-frame_result_exclude = QWidget()
-result_tabs.addTab(frame_result_exclude, "제외할 파일/폴더 선택")
+# --- 5-2. 상세 보기 탭 ---
+# 변경 사항(삭제할 폴더, 복사할 폴더 ...)을 종류마다 작은 탭 하나로 나누고,
+# 탭 안의 목록에 실제 항목의 경로를 보여준다. 탭은 update_detail_tabs가 매번 새로 만든다.
+frame_result_detail = QWidget()
+_detail_layout = QVBoxLayout(frame_result_detail)
+_detail_layout.setContentsMargins(16, 12, 16, 12)
+_detail_layout.setSpacing(0)
+
+detail_tabs = QTabWidget()
+detail_tabs.tabBar().setExpanding(False)
+detail_tabs.tabBar().setDrawBase(False)
+# 바깥 탭(크롬 탭)과 구분되도록 글자 탭 + 밑줄로 가볍게 그린다.
+detail_tabs.setStyleSheet(f"""
+QTabWidget::pane {{
+    background-color: {COLOR_BG};
+    border: none;
+    border-top: 1px solid {COLOR_BORDER};
+    top: -1px;
+}}
+QTabBar::tab {{
+    background-color: transparent;
+    color: {COLOR_TEXT_SUB};
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 6px 12px;
+    margin-right: 4px;
+}}
+QTabBar::tab:selected {{
+    color: {COLOR_TEXT};
+    font-weight: 700;
+    border-bottom: 2px solid {COLOR_BLUE};
+}}
+QTabBar::tab:!selected:hover {{
+    color: {COLOR_TEXT};
+}}
+""")
+_detail_layout.addWidget(detail_tabs)
+
+result_tabs.addTab(frame_result_detail, "상세 보기")
+
+
+def update_detail_tabs(details: dict):
+    """
+    상세 보기 탭을 채운다.
+    details: {"삭제할 폴더": [경로, ...], "복사할 파일": [경로, ...], ...} 형태.
+    넘겨준 순서대로 탭을 만들고, 탭 이름 옆에 개수를 붙인다. 항목이 없으면 "현재 없음"을 띄운다.
+    이름에 "폴더"가 들어 있으면 폴더 아이콘, 아니면 파일 아이콘을 쓴다.
+    """
+    # 이전 검사 결과로 만든 탭을 모두 지운다.
+    while detail_tabs.count():
+        page = detail_tabs.widget(0)
+        detail_tabs.removeTab(0)
+        page.deleteLater()
+
+    for name, paths in details.items():
+        item_list = QListWidget()
+        item_list.setObjectName("BackupItems") # 범위 화면 목록과 같은 모양을 쓴다
+        item_list.setStyleSheet(_BACKUP_LIST_STYLE)
+        item_list.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        item_list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        item_list.setIconSize(QSize(16, 16))
+
+        if "폴더" in name:
+            icon = ICON_DIR
+        else:
+            icon = ICON_FILE
+
+        for path in paths:
+            item_list.addItem(QListWidgetItem(icon, path))
+
+        if len(paths) == 0:
+            add_empty_item(item_list)
+
+        detail_tabs.addTab(item_list, f"{name} ({len(paths):,})")
 
 frame_main.addWidget(frame_center_result)
 
