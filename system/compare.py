@@ -80,11 +80,7 @@ class CompareResult:
 
 
 
-def compare(org_path, tar_path, fast_scan=True):
-    SystemValues.compare_progress_val = 0
-    SystemValues.compare_progress_max = 0
-    SystemValues.compare_progress_path = ""
-    
+def compare(org_path, tar_path, fast_scan=True, root_only=False):
     auto_set_filter(tar_path) # 검사 속도 향상
 
     # 260자 경로 제한 버그 해결
@@ -92,29 +88,23 @@ def compare(org_path, tar_path, fast_scan=True):
     tar_path = norm_max_path(tar_path)
 
     # 비교할 폴더 계산, 파일 수 계산등의 전처리 작업
-    result = compare_preprocessing(org_path, tar_path) # 이 result가 반환될 객체임
+    pre_result = compare_preprocessing(org_path, tar_path, root_only) # 이 result가 반환될 객체임
     # 공통 폴더 내에서 파일 비교
-    returns = compare_files(result, fast_scan=fast_scan)    
-    result.files_copy = returns[0]
-    result.files_rmv = returns[1]
-    result.files_renew = returns[2]
-    result.files_same = returns[3]
-
-    # 최적화율 계산
-    if len(result.files_same) != 0:
-        result.optimized_percent = SystemValues.optimized_count / len(result.files_same) * 100
-    else:
-        result.optimized_percent = 0
+    result = compare_files(pre_result, fast_scan=fast_scan)    
 
     return result
 
 
-def compare_preprocessing(org_path, tar_path):
+def compare_preprocessing(org_path, tar_path, root_only=False):
     """
     폴더 비교를 끝내고, 이어질 파일 비교(compare_files)에 필요한 준비까지 마친
     CompareResult를 반환한다.
 
     org_path는 백업하려는 원본 폴더, tar_path는 덮어씌울 대상 폴더이며 둘 다 절대경로다.
+
+    root_only=True이면 루트 바로 아래의 파일만 다룬다.
+        루트의 폴더는 없는 것으로 취급하므로 분류되지도, 내려가지도, 유사도에 세지도 않는다.
+        따라서 dirs_copy / dirs_rmv는 비어 있고, dirs_same은 [""]이며, dirs_similarity는 -1이다.
 
     양쪽에 모두 존재하는 폴더만 너비 우선으로 따라 내려가면서, 폴더마다 아래 네 가지를 한다.
 
@@ -183,6 +173,9 @@ def compare_preprocessing(org_path, tar_path):
 
         org_dirs = org_entries.dirs.keys()
         tar_dirs = tar_entries.dirs.keys()
+        if root_only: # 루트의 파일만 다루므로 폴더는 없는 것으로 취급한다
+            org_dirs = set()
+            tar_dirs = set()
         common_name_dirs = org_dirs & tar_dirs # key끼리 교집합 가능함
 
         # 복사할 폴더
@@ -242,6 +235,33 @@ def compare_preprocessing(org_path, tar_path):
     return result
 
 
+def compare_one_file(org_entry: os.DirEntry, tar_entry: os.DirEntry, fast_scan=True) -> bool:
+    """
+    이름이 같은 파일 하나를 비교해서, 내용이 같으면 True를 반환한다.
+
+        1. cmp_shallow로 크기와 수정시간만 보고 빠르게 판정을 시도한다.
+        2. 그것으로 결론이 나지 않으면(None) do_cmp로 내용을 직접 비교한다.
+    정밀검사(fast_scan=False)일 때는 1단계를 건너뛰고 반드시 내용을 비교한다.
+
+    1단계에서 같다고 판정되면 SystemValues.optimized_count를 1 올린다.
+    """
+    org_stat = org_entry.stat(follow_symlinks=False)
+    tar_stat = tar_entry.stat(follow_symlinks=False)
+
+    # 1단계: 크기와 수정시간만으로 빠르게 판정을 시도한다.
+    is_same = None
+    if fast_scan:
+        is_same = cmp_shallow(org_stat, tar_stat)
+        if is_same:
+            SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
+
+    # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
+    if is_same is None:
+        is_same = do_cmp(org_entry.path, tar_entry.path)
+
+    return is_same
+
+
 def compare_files(preprocessing_result:CompareResult, fast_scan=True):
     """
     compare_preprocessing()가 만들어둔 캐시를 이어받아, 공통 폴더 안의 파일을 비교한다.
@@ -250,13 +270,9 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
     엔트리는 크기와 수정시간을 이미 들고 있고 전체 경로(entry.path)도 알고 있으므로,
     파일마다 os.stat을 다시 부르거나 경로를 os.path.join으로 다시 만들 필요가 없다.
 
-    파일 하나를 판정하는 순서는 다음과 같다.
-        1. cmp_shallow로 크기와 수정시간만 보고 빠르게 판정을 시도한다.
-        2. 그것으로 결론이 나지 않으면(None) do_cmp로 내용을 직접 비교한다.
-    정밀검사(fast_scan=False)일 때는 수정시간이 같아도 믿지 않고,
-    크기만 확인한 뒤 반드시 내용을 비교한다.
+    파일 하나의 판정은 compare_one_file에 맡긴다.
 
-    반환값은 (복사할 파일, 삭제할 파일, 갱신할 파일, 동일한 파일) 순서이며,
+    반환값은 (복사할 파일, 삭제할 파일, 갱신할 파일, 동일한 파일)이 포함된 result이며,
     동일한 파일만 상대경로이고 나머지 셋은 절대경로이다.
 
     최적화된 파일의 개수를 측정하여 SystemValues.optimized_count에 저장한다.
@@ -282,19 +298,7 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
             # fname 자체가 org_entries와 tar_entries를 조회할수 있는 key이다.
             org_entry = org_entries.files[fname]
             tar_entry = tar_entries.files[fname]
-            org_stat = org_entry.stat(follow_symlinks=False)
-            tar_stat = tar_entry.stat(follow_symlinks=False)
-
-            # 1단계: 크기와 수정시간만으로 빠르게 판정을 시도한다.
-            is_same = None
-            if fast_scan:
-                is_same = cmp_shallow(org_stat, tar_stat)
-                if is_same:
-                    SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
-
-            # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
-            if is_same is None:
-                is_same = do_cmp(org_entry.path, tar_entry.path)
+            is_same = compare_one_file(org_entry, tar_entry, fast_scan)
 
             if is_same: # 내용이 동일하면 같은 파일
                 return_same.append(rel_file) # 상대 경로로 저장
@@ -314,4 +318,17 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
         for fname in (tar_files.keys() - common_names):
             return_rmv.append(tar_files[fname].path) # 삭제할 파일은 타겟에 존재함
 
-    return return_copy, return_rmv, return_renew, return_same
+    # 결과 정리
+    result = preprocessing_result
+    result.files_copy = return_copy
+    result.files_rmv = return_rmv
+    result.files_renew = return_renew
+    result.files_same = return_same
+
+    # 최적화율 계산
+    if len(result.files_same) != 0:
+        result.optimized_percent = SystemValues.optimized_count / len(result.files_same) * 100
+    else:
+        result.optimized_percent = 0
+
+    return result
