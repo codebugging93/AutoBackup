@@ -1,6 +1,7 @@
 """ 상위 모듈에서 FileNotFoundError를 처리해야 함 """
 
 import os
+import stat
 from pathlib import Path
 from system.depth import DepthError, get_depth, split_path
 
@@ -131,46 +132,32 @@ class ListdirSplitResult:
         self.unknowns: dict[str, os.DirEntry] = dict() # 파일, 폴더, 링크도 아닌 것들 (처리 곤란)
 
 
-def get_listdir_split(path) -> ListdirSplitResult:
+def get_listdir_split(path, skip_hidden=False) -> ListdirSplitResult:
     """
-    os.listdir과 비슷한 동작을 하지만 속도가 훨 빠르다.
-    경고: path는 절대경로여야만 한다.
-
-    path 안의 내용물을 파일/폴더/링크/그 외로 나눠서 ListdirSplitResult에 담아 반환한다.
-    네 항목 모두 "이름 -> DirEntry" 형태의 dict이다.
-
+    절대경로 path 안의 내용물을 파일/폴더/링크/그 외로 나눠서 ListdirSplitResult에 담아 반환한다.
         files    : 정규 파일
         dirs     : 폴더
         links    : 심볼릭 링크 (파일인지 폴더인지 따지지 않고 먼저 걸러낸다)
         unknowns : 위 셋 중 어느 것도 아닌 것 (처리 곤란)
 
-    이름만 담지 않고 엔트리까지 들고 있는 이유:
-        os.scandir는 폴더를 훑을 때 이름뿐 아니라 크기와 수정시간까지 함께 받아오고,
-        DirEntry가 그 값을 들고 있다. 그래서 entry.stat()이 시스템 콜 없이 값을 돌려주고,
-        entry.path로 전체 경로도 바로 얻을 수 있다.(윈도우 기준)
-        엔트리를 버리고 이름만 남기면 나중에 파일마다 os.stat을 다시 불러야 하는데,
-        그 비용이 stat이 느린 외장 드라이브에서 특히 크다.
+    skip_hidden=True이면 숨김 속성이 붙은 항목을 담지 않는다.
+        예: $RECYCLE.BIN, System Volume Information 등
 
-    dict인 이유:
-        DirEntry는 __eq__/__hash__를 정의하지 않아 동일성 기준으로 해시된다.
-        그래서 엔트리를 집합에 담으면 다른 폴더의 같은 이름끼리 교집합이 잡히지 않는다.
-        dict로 두면 dict.keys()가 집합처럼 동작하므로 이름으로 교집합/차집합을 구하고,
-        그 이름으로 양쪽 엔트리를 각각 꺼내 쓸 수 있다.
-
-            common = org.files.keys() & tar.files.keys()
-            org_entry = org.files[name]
-            tar_entry = tar.files[name]
-
-        주의: dict끼리는 & 나 - 가 되지 않으므로 반드시 keys()를 거쳐야 한다.
-
-    주의: 엔트리가 들고 있는 크기/수정시간은 이 함수를 실행한 시점의 값이다.
-        그 뒤에 파일이 바뀌어도 반영되지 않는다.
+    주의: dict끼리는 & 나 - 가 되지 않으므로 반드시 keys()를 거쳐야 한다.
+        org.files.keys() & tar.files.keys() 으로 공통 key를 추출하거나 
+        org.files.keys() - tar.files.keys() 으로 원본 파일에만 존재하는 key들을 추출할 수 있다.
     """
 
     result = ListdirSplitResult(path)
 
     with os.scandir(path) as iterator:
         for entry in iterator:
+            if skip_hidden:
+                # 링크인지 아직 모르므로 링크를 따라가지 않고 항목 자체의 속성을 본다.
+                attributes = getattr(entry.stat(follow_symlinks=False), "st_file_attributes", 0)
+                if attributes & stat.FILE_ATTRIBUTE_HIDDEN:
+                    continue
+
             if entry.is_symlink():
                 result.links[entry.name] = entry
             elif entry.is_file(follow_symlinks=False): 
