@@ -80,7 +80,7 @@ class CompareResult:
 
 
 
-def compare(org_path, tar_path, fast_scan=True, root_only=False):
+def compare(org_path, tar_path, fast_scan=True, root_only=False, skip_hidden=False):
     auto_set_filter(tar_path) # 검사 속도 향상
 
     # 260자 경로 제한 버그 해결
@@ -88,14 +88,14 @@ def compare(org_path, tar_path, fast_scan=True, root_only=False):
     tar_path = norm_max_path(tar_path)
 
     # 비교할 폴더 계산, 파일 수 계산등의 전처리 작업
-    pre_result = compare_preprocessing(org_path, tar_path, root_only) # 이 result가 반환될 객체임
+    pre_result = compare_preprocessing(org_path, tar_path, root_only, skip_hidden) # 이 result가 반환될 객체임
     # 공통 폴더 내에서 파일 비교
     result = compare_files(pre_result, fast_scan=fast_scan)    
 
     return result
 
 
-def compare_preprocessing(org_path, tar_path, root_only=False):
+def compare_preprocessing(org_path, tar_path, root_only=False, skip_hidden=False):
     """
     폴더 비교를 끝내고, 이어질 파일 비교(compare_files)에 필요한 준비까지 마친
     CompareResult를 반환한다.
@@ -105,6 +105,8 @@ def compare_preprocessing(org_path, tar_path, root_only=False):
     root_only=True이면 루트 바로 아래의 파일만 다룬다.
         루트의 폴더는 없는 것으로 취급하므로 분류되지도, 내려가지도, 유사도에 세지도 않는다.
         따라서 dirs_copy / dirs_rmv는 비어 있고, dirs_same은 [""]이며, dirs_similarity는 -1이다.
+
+    skip_hidden=True이면 숨김 속성이 붙은 항목을 없는 것으로 취급한다. (get_listdir_split 참고)
 
     양쪽에 모두 존재하는 폴더만 너비 우선으로 따라 내려가면서, 폴더마다 아래 네 가지를 한다.
 
@@ -158,8 +160,8 @@ def compare_preprocessing(org_path, tar_path, root_only=False):
         tar_dir = os.path.join(tar_path, same_folder) # 절대경로
 
         try:
-            org_entries = get_listdir_split(org_dir) 
-            tar_entries = get_listdir_split(tar_dir) 
+            org_entries = get_listdir_split(org_dir, skip_hidden)
+            tar_entries = get_listdir_split(tar_dir, skip_hidden)
         except PermissionError:
             # 사용자가 선택한 폴더 자체가 문제인 경우 에러를 띄워 검사를 중단시킴
             if same_folder == "":
