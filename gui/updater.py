@@ -1,13 +1,19 @@
 """
-gui/updater.py(tkinter)를 PySide6로 번역한 버전입니다.
+진행 화면(윗줄/아랫줄 진행률)을 주기적으로 갱신한다.
 
-기존 tkinter 버전을 그대로 옮기지 않고, PySide6에 맞게 QThread 기반으로 다시 짰습니다.
-- 원본은 threading.Thread + 폴링용 bool 플래그(running)로 스레드를 제어했는데,
-  Qt 앱에서는 QThread를 쓰는 것이 정석이라 QThread로 교체했습니다.
-- 정지 신호는 직접 만든 bool 플래그 대신 QThread에 내장된
-  requestInterruption()/isInterruptionRequested()를 사용합니다(Qt가 보장하는 스레드 안전 API).
-- 실제 위젯 갱신은 QThread 쪽에서 emit한 시그널을 Qt.QueuedConnection으로 받아
-  GUI 스레드의 이벤트 루프에서 실행되므로, 위젯 접근이 항상 GUI 스레드에서만 일어남을 보장합니다.
+검사/백업/복사마다 따로 있던 갱신 함수를 하나(UiUpdater.update)로 합쳤다.
+진행 화면은 두 줄로 되어 있고, 줄마다 메시지/값/최대값/경로를 SystemValues에 따로 적는다.
+
+    윗줄  : top_progress_msg,    top_progress_val,    top_progress_max,    top_progress_path
+    아랫줄: bottom_progress_msg, bottom_progress_val, bottom_progress_max, bottom_progress_path
+
+아랫줄은 bottom_progress_visible이 True일 때만 보인다. (False이면 한 줄짜리 진행 화면)
+경과 시간은 progress_start_time부터 잰다.
+
+- 스레드는 QThread를 쓰고, 정지 신호는 QThread에 내장된
+  requestInterruption()/isInterruptionRequested()를 사용한다(Qt가 보장하는 스레드 안전 API).
+- 위젯 갱신은 call_in_gui_thread로 GUI 스레드에 넘겨서 실행하므로,
+  위젯 접근은 항상 GUI 스레드에서만 일어난다.
 """
 
 import time
@@ -23,35 +29,31 @@ _TICK_INTERVAL_MS = 1000 // 60  # 60Hz
 
 class _UpdateThread(QThread):
     """
-    1/30초마다 func를 GUI 스레드에서 실행되도록 예약하는 워커 스레드.
+    1/60초마다 UiUpdater.update를 GUI 스레드에서 실행되도록 예약하는 워커 스레드.
 
     처음엔 tick 시그널을 만들어서 밖에서 Qt.QueuedConnection으로 연결하는 방식으로 짰었는데,
     UiUpdater.start()가 (run_compare 등의) 백그라운드 스레드에서 호출될 때는
     그 connect() 자체가 GUI 스레드가 아닌 그 백그라운드 스레드 기준으로 걸려버려서,
     거기엔 이벤트 루프가 없으니 큐에 쌓이기만 하고 실제로는 절대 실행되지 않는 문제가 있었다
     (진행바가 안 움직이던 원인). 그래서 어느 스레드에서 start()를 부르든 항상 안전하게
-    GUI 스레드로 넘겨주는 components_pyside6.call_in_gui_thread를 직접 쓰도록 바꿈.
+    GUI 스레드로 넘겨주는 call_in_gui_thread를 직접 쓰도록 바꿈.
     """
-
-    def __init__(self, func):
-        super().__init__()
-        self._func = func
 
     def run(self):
         while not self.isInterruptionRequested():
-            widgets.call_in_gui_thread(self._func)
+            widgets.call_in_gui_thread(UiUpdater.update)
             self.msleep(_TICK_INTERVAL_MS)
-        widgets.call_in_gui_thread(self._func)  # 종료 시 한번 더 업데이트
+        widgets.call_in_gui_thread(UiUpdater.update)  # 종료 시 한번 더 업데이트
 
 
 class UiUpdater:
     _thread: "_UpdateThread | None" = None
 
     @classmethod
-    def start(cls, func):
+    def start(cls):
         cls.stop()  # 혹시 이전 스레드가 아직 살아있다면 먼저 정리
 
-        thread = _UpdateThread(func)
+        thread = _UpdateThread()
         cls._thread = thread
         thread.start()
 
@@ -62,70 +64,49 @@ class UiUpdater:
             return
         cls._thread = None
         thread.requestInterruption()
-        thread.wait()  # 스레드가 실제로 종료될 때까지 대기 (tkinter판의 "sleep(0.5) 후 기대"와 달리 확정적으로 종료를 보장)
+        thread.wait()  # 스레드가 실제로 종료될 때까지 대기
 
     @classmethod
-    def update_compare(cls):
+    def update(cls):
+        # ---------- 윗줄 ----------
         # 프로그레스바
-        max_value = SystemValues.compare_progress_max
-        current_value = SystemValues.compare_progress_val
+        max_value = SystemValues.top_progress_max
+        current_value = SystemValues.top_progress_val
         widgets.top_progressbar.setMaximum(max(max_value, 1))  # 0이면 busy 애니메이션 되는 것 방지
         widgets.top_progressbar.setValue(min(current_value, max(max_value, 1)))
 
         # 진행률 표시
         percentage = _get_percentage(current_value, max_value)
-        string = f"파일 검사 중 {current_value}/{max_value} ({percentage:.1f}%)"
-        widgets.label_top_progress.setText(string)
+        message = SystemValues.top_progress_msg
+        widgets.label_top_progress.setText(f"{message} {current_value}/{max_value} ({percentage:.1f}%)")
 
-        # 경로 표시
-        path = summarize_str(SystemValues.compare_progress_path)
-        widgets.label_top_progress3.setText(path)
+        # 문자열 표시 (경로 등)
+        widgets.label_top_progress3.setText(summarize_str(SystemValues.top_progress_path))
 
-        # 시간 표시
-        time_str = _get_time_str(time.time() - SystemValues.compare_start_time)
+        # 경과 시간 (윗줄 오른쪽)
+        time_str = _get_time_str(time.time() - SystemValues.progress_start_time)
         widgets.label_top_progress2.setText(time_str)
 
-    @classmethod
-    def update_backup(cls):
+        # ---------- 아랫줄: 필요할 때만 보인다 ----------
+        if not SystemValues.bottom_progress_visible:
+            widgets.frame_bottom_progress.hide()
+            return
+
+        widgets.frame_bottom_progress.show()
+
         # 프로그레스바
-        max_value = SystemValues.backup_progress_max
-        current_value = SystemValues.backup_progress_val
-        widgets.top_progressbar.setMaximum(max(max_value, 1))
-        widgets.top_progressbar.setValue(min(current_value, max(max_value, 1)))
+        max_value = SystemValues.bottom_progress_max
+        current_value = SystemValues.bottom_progress_val
+        widgets.bottom_progressbar.setMaximum(max(max_value, 1))
+        widgets.bottom_progressbar.setValue(min(current_value, max(max_value, 1)))
 
         # 진행률 표시
         percentage = _get_percentage(current_value, max_value)
-        message = SystemValues.backup_progress_msg
-        string = f"{message} {current_value}/{max_value} ({percentage:.1f}%)"
-        widgets.label_top_progress.setText(string)
+        message = SystemValues.bottom_progress_msg
+        widgets.label_bottom_progress.setText(f"{message} {current_value}/{max_value} ({percentage:.1f}%)")
 
-        # 경로 표시
-        path = summarize_str(SystemValues.backup_progress_path)
-        widgets.label_top_progress3.setText(path)
-
-        # 시간 표시
-        time_str = _get_time_str(time.time() - SystemValues.backup_start_time)
-        widgets.label_top_progress2.setText(time_str)
-
-        if SystemValues.copy_working:
-            widgets.frame_bottom_progress.show()
-        else:
-            widgets.frame_bottom_progress.hide()
-
-        # 프로그레스바
-        bottom_max = SystemValues.copy_progress_max
-        bottom_value = SystemValues.copy_progress_val
-        widgets.bottom_progressbar.setMaximum(max(bottom_max, 1))
-        widgets.bottom_progressbar.setValue(min(bottom_value, max(bottom_max, 1)))
-
-        # 진행률 표시
-        percentage = _get_percentage(bottom_value, bottom_max)
-        string = f"파일 복사 중 {bottom_value}/{bottom_max} ({percentage:.1f}%)"
-        widgets.label_bottom_progress.setText(string)
-
-        # 경로 표시
-        path = summarize_str(SystemValues.copy_progress_path)
-        widgets.label_bottom_progress3.setText(path)
+        # 문자열 표시 (경로 등)
+        widgets.label_bottom_progress3.setText(summarize_str(SystemValues.bottom_progress_path))
 
 
 def _get_percentage(current_value, max_value):

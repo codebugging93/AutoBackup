@@ -56,13 +56,13 @@ def copy_dir(src, dst, metadata=True):
     src 폴더를 dst로 통째로, 재귀적으로 복사한다.
     src, dst는 절대경로이다.
     """
-    SystemValues.copy_progress_max = 0
-    SystemValues.copy_progress_val = 0
-    SystemValues.copy_progress_path = ""
+    SystemValues.bottom_progress_max = 0
+    SystemValues.bottom_progress_val = 0
+    SystemValues.bottom_progress_path = ""
 
     # os.walk를 이용해서 각 root마다 files를 복사해야함
     for _, _, files in os.walk(src):
-        SystemValues.copy_progress_max += len(files)
+        SystemValues.bottom_progress_max += len(files)
 
     src_depth = get_depth(src)
     for src_dir, dirs, files in os.walk(src):
@@ -75,12 +75,12 @@ def copy_dir(src, dst, metadata=True):
         for name in files:
             src_file = merge_path(src_dir, name)
             dst_file = merge_path(dst_dir, name)
-            SystemValues.copy_progress_path = src_file
+            SystemValues.bottom_progress_path = src_file
             try:
                 copy_file(src_file, dst_file, metadata=metadata)
             except OSError:
                 pass # 실패한 파일은 건너뛰고 폴더의 나머지 파일을 계속 복사함
-            SystemValues.copy_progress_val += 1
+            SystemValues.bottom_progress_val += 1
 
 
 def move_dir(src, dst, mkdirs=True, metadata=True):
@@ -99,13 +99,13 @@ def move_dir(src, dst, mkdirs=True, metadata=True):
 
     """ 아래 코드는 copy_dir을 그대로 갖고와서 일부 수정한 것이다. """
 
-    SystemValues.copy_progress_max = 0
-    SystemValues.copy_progress_val = 0
-    SystemValues.copy_progress_path = ""
+    SystemValues.bottom_progress_max = 0
+    SystemValues.bottom_progress_val = 0
+    SystemValues.bottom_progress_path = ""
 
     # os.walk를 이용해서 각 root마다 files를 복사해야함
     for _, _, files in os.walk(src):
-        SystemValues.copy_progress_max += len(files)
+        SystemValues.bottom_progress_max += len(files)
 
     src_depth = get_depth(src)
     for src_dir, dirs, files in os.walk(src, topdown=False):
@@ -118,12 +118,12 @@ def move_dir(src, dst, mkdirs=True, metadata=True):
         for name in files:
             src_file = merge_path(src_dir, name)
             dst_file = merge_path(dst_dir, name)
-            SystemValues.copy_progress_path = src_file
+            SystemValues.bottom_progress_path = src_file
             try:
                 move_file(src_file, dst_file, metadata=metadata)
             except OSError:
                 pass # 실패한 파일은 건너뛰고 폴더의 나머지 파일을 계속 복사함
-            SystemValues.copy_progress_val += 1
+            SystemValues.bottom_progress_val += 1
 
         try: # 전부 비운 폴더 삭제 시도
             os.rmdir(src_dir)

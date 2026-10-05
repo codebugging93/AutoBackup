@@ -20,10 +20,10 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     files_rmv: 존재한다면 failed.files_rmv에 넣는다.
     files_renew: files_copy와 동일하게 처리한다.
     """
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = 0
-    SystemValues.backup_progress_msg = ""
-    SystemValues.backup_progress_path = ""
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = 0
+    SystemValues.top_progress_msg = ""
+    SystemValues.top_progress_path = ""
     
     # 결과를 모으기 위한 지역 변수 리스트들
     files_rmv = []
@@ -33,15 +33,15 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     dirs_copy = []
 
     # 1. 파일 삭제 확인
-    SystemValues.backup_progress_msg = "파일 삭제 확인 중"
+    SystemValues.top_progress_msg = "파일 삭제 확인 중"
     files_rmv.extend(aftercheck_files_rmv(compare_result.files_rmv))
 
     # 2. 폴더 삭제 확인
-    SystemValues.backup_progress_msg = "폴더 삭제 확인 중"
+    SystemValues.top_progress_msg = "폴더 삭제 확인 중"
     dirs_rmv.extend(aftercheck_dirs_rmv(compare_result.dirs_rmv))
 
     # 3. 파일 복사 확인 
-    SystemValues.backup_progress_msg = "파일 복사 확인 중"
+    SystemValues.top_progress_msg = "파일 복사 확인 중"
     result = aftercheck_files_copy(
         compare_result.org_path, compare_result.tar_path, 
         compare_result.files_copy, fast_scan
@@ -50,7 +50,7 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     files_renew.extend(result.files_renew)
 
     # 4. 파일 갱신 확인
-    SystemValues.backup_progress_msg = "파일 갱신 확인 중"
+    SystemValues.top_progress_msg = "파일 갱신 확인 중"
     result = aftercheck_files_renew(
         compare_result.org_path, compare_result.tar_path, 
         compare_result.files_renew, fast_scan
@@ -59,7 +59,7 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     files_renew.extend(result.files_renew)
 
     # 5. 폴더 복사 확인 (재귀적으로 내부 파일 및 폴더 검사 결과 병합)
-    SystemValues.backup_progress_msg = "폴더 복사 확인 중"
+    SystemValues.top_progress_msg = "폴더 복사 확인 중"
     result = aftercheck_dirs_copy(
         compare_result.org_path, compare_result.tar_path, 
         compare_result.dirs_copy, fast_scan
@@ -70,7 +70,7 @@ def aftercheck(compare_result: CompareResult, fast_scan=True):
     files_rmv.extend(result.files_rmv)
     files_renew.extend(result.files_renew)
 
-    SystemValues.backup_progress_msg = "재검사 완료"
+    SystemValues.top_progress_msg = "재검사 완료"
 
     # 최종적으로 리스트 대입
     failed_result = CompareResult()
@@ -91,16 +91,16 @@ def aftercheck_files_rmv(files: list):
     제대로 삭제되었는지 확인한다.
     """
     failed_files = []
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = len(files)
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(files)
 
     for src in files:
-        SystemValues.backup_progress_path = src
+        SystemValues.top_progress_path = src
         if os.path.exists(src): # 삭제한줄 알았던 파일이 존재하고,
             # exists만으로는 대소문자까지 일치하는지 확인할 수 없다.
             if os.path.basename(src) == os.path.basename(os.path.realpath(src)): # 대소문자까지 비교하여 완전 동일한 파일이면 
                 failed_files.append(src) # 실패한 파일로 넣음
-        SystemValues.backup_progress_val += 1
+        SystemValues.top_progress_val += 1
 
     return failed_files
 
@@ -111,13 +111,13 @@ def aftercheck_files_copy(org_path, tar_path, files: list, fast_scan=True):
     tar_path로 제대로 복사되었는지 compare해본다.
     """
     failed = CompareResult()
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = len(files)
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(files)
 
     for src in files:
         cut = cut_path(src, get_depth(org_path))
         dst = os.path.join(tar_path, cut)
-        SystemValues.backup_progress_path = src
+        SystemValues.top_progress_path = src
 
         try: 
             # 1단계: 크기와 수정시간만으로 빠르게 판정을 시도한다.
@@ -137,7 +137,7 @@ def aftercheck_files_copy(org_path, tar_path, files: list, fast_scan=True):
         except FileNotFoundError:
             # 파일이 없을 때는 복사해야함 
             failed.files_copy.append(src)
-        SystemValues.backup_progress_val += 1
+        SystemValues.top_progress_val += 1
 
     return failed
 
@@ -148,14 +148,14 @@ def aftercheck_files_renew(org_path, tar_path, files: list, fast_scan=True):
     org_path로부터 제대로 갱신되었는지 compare해본다.
     """
     failed = CompareResult()
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = len(files)
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(files)
 
     # 여기서부터 
     for dst in files:
         cut = cut_path(dst, get_depth(tar_path))
         src = os.path.join(org_path, cut)
-        SystemValues.backup_progress_path = cut
+        SystemValues.top_progress_path = cut
         # 여기까지가 aftercheck_files_copy와 다른 부분
 
         try: 
@@ -176,7 +176,7 @@ def aftercheck_files_renew(org_path, tar_path, files: list, fast_scan=True):
         except FileNotFoundError:
             # 파일이 없을 때는 복사해야함 
             failed.files_copy.append(src)
-        SystemValues.backup_progress_val += 1
+        SystemValues.top_progress_val += 1
 
     return failed
 
@@ -187,16 +187,16 @@ def aftercheck_dirs_rmv(dirs: list):
     제대로 삭제되었는지 확인한다.
     """
     failed_dirs = [] 
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = len(dirs)
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(dirs)
 
     for src in dirs:
-        SystemValues.backup_progress_path = src
+        SystemValues.top_progress_path = src
         if os.path.exists(src): # 삭제한줄 알았던 폴더가 존재하고,
             # exists만으로는 대소문자까지 일치하는지 확인할 수 없다.
             if os.path.basename(src) == os.path.basename(os.path.realpath(src)): # 대소문자까지 비교하여 완전 동일한 폴더이면
                 failed_dirs.append(src) # 실패한 폴더로 넣음
-        SystemValues.backup_progress_val += 1
+        SystemValues.top_progress_val += 1
 
     return failed_dirs
 
@@ -207,25 +207,28 @@ def aftercheck_dirs_copy(org_path, tar_path, dirs: list, fast_scan=True) -> Comp
     tar_path로 제대로 복사되었는지 compare해본다.
     """
     failed_result = CompareResult()
-    SystemValues.backup_progress_val = 0
-    SystemValues.backup_progress_max = len(dirs)
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(dirs)
     
     for src in dirs:
         cut = cut_path(src, get_depth(org_path))
         dst = os.path.join(tar_path, cut)
-        SystemValues.backup_progress_path = src
+        SystemValues.top_progress_path = src
         
         if not os.path.exists(dst):
             failed_result.dirs_copy.append(src)
             continue
 
         # 다양한 결과가 나오게 됨
+        # TODO: compare도 top_progress_*를 쓰므로 진행바가 겹친다.
+        #   여기서는 폴더 단위(top_progress_max = len(dirs))로 세는데,
+        #   compare가 top_progress_max를 0으로 만들고 val/path를 파일 단위로 덮어써서 숫자가 엉킨다.
         _result = compare(src, dst, fast_scan=fast_scan)
         failed_result.dirs_copy.extend(_result.dirs_copy)
         failed_result.dirs_rmv.extend(_result.dirs_rmv)
         failed_result.files_copy.extend(_result.files_copy)
         failed_result.files_rmv.extend(_result.files_rmv)
         failed_result.files_renew.extend(_result.files_renew)
-        SystemValues.backup_progress_val += 1
+        SystemValues.top_progress_val += 1
 
     return failed_result

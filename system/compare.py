@@ -145,7 +145,7 @@ def compare_preprocessing(org_path, tar_path, root_only=False, skip_hidden=False
 
     3. 진행률 준비
         compare_files가 실제로 비교하게 될 파일 수를
-        SystemValues.compare_progress_max에 채워둔다.
+        SystemValues.top_progress_max에 채워둔다.
 
     4. 캐시 (result.cache)
         (공통 폴더의 상대경로, 원본 목록, 대상 목록, 공통 파일 이름)을 폴더마다 담아둔다.
@@ -163,7 +163,7 @@ def compare_preprocessing(org_path, tar_path, root_only=False, skip_hidden=False
     return_cache = [] 
 
     # 각종 측정값
-    SystemValues.compare_progress_max = 0 # 작업할 파일 개수 측정
+    SystemValues.top_progress_max = 0 # 작업할 파일 개수 측정
     dirs_universal_set_count = 0
     dirs_intersection_set_count = 0
     files_universal_set_count = 0
@@ -225,7 +225,7 @@ def compare_preprocessing(org_path, tar_path, root_only=False, skip_hidden=False
         files_universal_set_count += len(org_files) + len(tar_files) - len(common_name_files)
 
         # 진행률 반영
-        SystemValues.compare_progress_max += len(common_name_files) # 공통 이름의 파일을 가지고 compare_files에서 작업함 
+        SystemValues.top_progress_max += len(common_name_files) # 공통 이름의 파일을 가지고 compare_files에서 작업함 
         return_cache.append((same_folder, org_entries, tar_entries, common_name_files))
 
     # 결과물 제작
@@ -316,7 +316,7 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
         # 이름이 동일하면서 내용까지 동일한지 검사함
         for fname in common_names:
             rel_file = os.path.join(rel_path, fname) # 상대 경로
-            SystemValues.compare_progress_path = rel_file
+            SystemValues.top_progress_path = rel_file
 
             # common_names는 공통된 파일의 이름을 갖고있고, 
             # fname 자체가 org_entries와 tar_entries를 조회할수 있는 key이다.
@@ -329,7 +329,7 @@ def compare_files(preprocessing_result:CompareResult, fast_scan=True):
             else: # 내용이 다르다면 갱신할 파일
                 return_renew.append(tar_entry.path) # 갱신될 파일의 절대 경로로 저장
 
-            SystemValues.compare_progress_val += 1
+            SystemValues.top_progress_val += 1
             #진행이 될떄 값이 1씩 추가됨
 
         # 복사할 파일을 추출함 
