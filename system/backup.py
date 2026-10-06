@@ -14,7 +14,6 @@ from system.Trashbin import Trashbin
 def backup(compare_result: CompareResult):
     SystemValues.top_progress_val = 0
     SystemValues.top_progress_max = 0
-    SystemValues.top_progress_msg = ""
     SystemValues.top_progress_path = ""
     SystemValues.bottom_progress_visible = False 
     
@@ -46,13 +45,13 @@ def backup(compare_result: CompareResult):
 
     # 대소문자 관련 버그때문에 삭제를 먼저 수행해야함
     SystemValues.top_progress_msg = "폴더 삭제 중"
-    SystemValues.bottom_progress_visible = True 
-    remove_dirs( 
+    remove_dirs(
         compare_result.tar_path, # 절대로 원본의 것을 삭제하지 않음
         compare_result.dirs_rmv
     )
 
     SystemValues.top_progress_msg = "폴더 복사 중"
+    SystemValues.bottom_progress_visible = True # 하단 진행바 활성화 
     copy_dirs(
         compare_result.org_path, 
         compare_result.tar_path,

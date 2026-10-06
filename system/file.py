@@ -56,6 +56,7 @@ def copy_dir(src, dst, metadata=True):
     src 폴더를 dst로 통째로, 재귀적으로 복사한다.
     src, dst는 절대경로이다.
     """
+    SystemValues.bottom_progress_msg = "파일 복사 중"
     SystemValues.bottom_progress_max = 0
     SystemValues.bottom_progress_val = 0
     SystemValues.bottom_progress_path = ""
@@ -92,6 +93,7 @@ def move_dir(src, dst, mkdirs=True, metadata=True):
     """
     # 같은 드라이브라면 os.rename으로 빠르게 옮김
     if os.path.splitdrive(src)[0].lower() == os.path.splitdrive(dst)[0].lower():
+        SystemValues.bottom_progress_visible = False # 이땐 하단바 보여줄 필요가 없다.
         if mkdirs:
             os.makedirs(os.path.dirname(dst), exist_ok=True)
         os.rename(src, dst)
@@ -99,6 +101,9 @@ def move_dir(src, dst, mkdirs=True, metadata=True):
 
     """ 아래 코드는 copy_dir을 그대로 갖고와서 일부 수정한 것이다. """
 
+    # 다른 드라이브라서 파일을 하나씩 옮겨야 할 때만 아랫줄을 켠다.
+    SystemValues.bottom_progress_visible = True
+    SystemValues.bottom_progress_msg = "파일 이동 중"
     SystemValues.bottom_progress_max = 0
     SystemValues.bottom_progress_val = 0
     SystemValues.bottom_progress_path = ""
@@ -127,8 +132,9 @@ def move_dir(src, dst, mkdirs=True, metadata=True):
 
         try: # 전부 비운 폴더 삭제 시도
             os.rmdir(src_dir)
-        except OSError: # 실패시 넘김 
-            pass 
+        except OSError: # 실패시 넘김
+            pass
+
 
 
     
