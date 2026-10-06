@@ -266,7 +266,8 @@ def compare_one_file(org_entry: os.DirEntry, tar_entry: os.DirEntry, fast_scan=T
         2. 그것으로 결론이 나지 않으면(None) do_cmp로 내용을 직접 비교한다.
     정밀검사(fast_scan=False)일 때는 1단계를 건너뛰고 반드시 내용을 비교한다.
 
-    1단계에서 같다고 판정되면 SystemValues.optimized_count를 1 올린다.
+    빠른 검사가 가능한 파일(크기와 수정시간이 같고, 실제로도 같은 파일)이면
+    SystemValues.optimized_count를 1 올린다. (정밀검사에서도 최적화율을 재기 위해)
     """
     org_stat = org_entry.stat(follow_symlinks=False)
     tar_stat = tar_entry.stat(follow_symlinks=False)
@@ -281,6 +282,8 @@ def compare_one_file(org_entry: os.DirEntry, tar_entry: os.DirEntry, fast_scan=T
     # 2단계: 결론이 나지 않았으면 내용을 직접 비교한다.
     if is_same is None:
         is_same = do_cmp(org_entry.path, tar_entry.path)
+        if is_same and cmp_shallow(org_stat, tar_stat):
+            SystemValues.optimized_count += 1 # 빠른 반환이 가능한 파일(최적화 된 파일)을 셈
 
     return is_same
 
