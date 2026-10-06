@@ -2,8 +2,8 @@ from cx_Freeze import Executable, setup
 from system.constants import APPNAME
 
 
-버전 = "0.3"
-
+버전 = "0.3" 
+ 
 
 executables = [Executable(
     "main.py", 
