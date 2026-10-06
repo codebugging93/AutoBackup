@@ -1075,6 +1075,7 @@ def update_detail_tabs(details: dict):
     details: {"삭제할 폴더": [경로, ...], "복사할 파일": [경로, ...], ...} 형태.
     넘겨준 순서대로 탭을 만들고, 탭 이름 옆에 개수를 붙인다. 항목이 없으면 "현재 없음"을 띄운다.
     이름에 "폴더"가 들어 있으면 폴더 아이콘, 아니면 파일 아이콘을 쓴다.
+    항목이 있는 첫 번째 탭을 열어 둔다.
     """
     # 이전 검사 결과로 만든 탭을 모두 지운다.
     while detail_tabs.count():
@@ -1102,6 +1103,15 @@ def update_detail_tabs(details: dict):
             add_empty_item(item_list)
 
         detail_tabs.addTab(item_list, f"{name} ({len(paths):,})")
+
+    # 항목이 있는 첫 번째 탭을 연다. 모두 비어 있으면 첫 번째 탭을 연다.
+    detail_tabs.setCurrentIndex(0)
+    index = 0
+    for paths in details.values():
+        if len(paths) > 0:
+            detail_tabs.setCurrentIndex(index)
+            break
+        index += 1
 
 frame_main.addWidget(frame_center_result)
 

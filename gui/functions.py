@@ -36,7 +36,7 @@ from system.Trashbin import Trashbin
 from system.SystemValues import SystemValues
 from system.aftercheck import aftercheck
 from system.backup import backup, boost
-from system.compare import CompareResult, compare
+from system.compare import CompareResult, compare, merge_results
 from system.compare import get_dirs_similarity, get_files_similarity, get_optimized_percent
 from system.constants import APPNAME
 from system.path import PREFIX_MAX_PATH, get_drive_display_name, get_listdir_split, is_dest_in_src, norm_max_path
@@ -109,7 +109,7 @@ def show_select_items():
 
     # 선택한 폴더가 실존하지 않는 경우(USB 연결 해제 등)
     if not os.path.isdir(label_org_path.text()) or not os.path.isdir(label_tar_path.text()):
-        _show_error("선택한 폴더를 찾을 수 없습니다.\n장치 연결 상태 등을 확인해주세요.")
+        _show_error("선택한 폴더를 찾을 수 없습니다.\n장치 연결 상태를 확인해주세요.")
         return
 
     # 같은 폴더를 선택한 경우
@@ -247,7 +247,7 @@ def show_compare():
 
     # 선택한 폴더가 실존하지 않는 경우(USB 연결 해제 등)
     if not os.path.isdir(label_org_path.text()) or not os.path.isdir(label_tar_path.text()):
-        _show_error("선택한 폴더를 찾을 수 없습니다.\n장치 연결 상태 등을 확인해주세요.")
+        _show_error("선택한 폴더를 찾을 수 없습니다.\n장치 연결 상태를 확인해주세요.")
         return
 
     btn_begin.setText("다음")
@@ -342,7 +342,7 @@ def show_compare_result():
     SIMILARITY_WARNING_THRESHOLD = 30.0 # 폴더/파일 유사도가 이 값보다 낮으면 폴더를 잘못 고른 것으로 보고 경고한다.
     if 0 <= dirs_similarity < SIMILARITY_WARNING_THRESHOLD or 0 <= files_similarity < SIMILARITY_WARNING_THRESHOLD:
         _show_warning("원본/대상 폴더간에 공통점이 거의 없습니다.\n"
-                      "선택된 폴더가 올바른지 확인하세요.")
+                      "폴더 선택이 올바르게 되었는지 확인하세요.")
 
 
 def show_backup():
@@ -387,6 +387,11 @@ def show_complete():
 
 
 def show_boost():
+    # 선택한 폴더가 실존하지 않는 경우(USB 연결 해제 등)
+    if not os.path.isdir(label_org_path.text()) or not os.path.isdir(label_tar_path.text()):
+        _show_error("최적화에 실패하였습니다.\n장치 연결 상태를 확인해주세요.")
+        return
+
     btn_begin.setText("다음")
     btn_begin.setEnabled(False)
     btn_Previous.setEnabled(False)
@@ -573,7 +578,7 @@ def run_compare():
         AppData.optimized_percent = get_optimized_percent(compare_results)
 
     except Exception:
-        cancel_task("검사 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        cancel_task("검사 중 오류가 발생하였습니다.\n장치 연결 상태를 확인해주세요.")
         return 
 
     AppData.compare_run_time = time() - SystemValues.progress_start_time
@@ -586,22 +591,32 @@ def run_compare():
 
 def run_backup():
     # ---------- 백업 ----------
-    UiUpdater.start(UiUpdater.update_backup)
+    # 진행 화면: 윗줄은 backup/aftercheck가 단계별로 채우고,
+    # 아랫줄은 폴더를 복사/삭제할 때만 backup이 켠다.
     SystemValues.progress_start_time = time()
+    UiUpdater.start()
 
+    remain = 0 # 백업되지 않고 남은 항목 수
     try:
-        backup(AppData.compare_result)
-        failed = aftercheck(AppData.compare_result, AppData.fast_scan)
+        # 각 result를 합쳐서 백업
+        merged = merge_results(
+            label_org_path.text(),
+            label_tar_path.text(),
+            AppData.compare_results)
+        backup(merged)
+
+        # 합치기 이전의 result로 꼼꼼히 다시 검사함 (aftercheck)
+        for result in AppData.compare_results:
+            failed = aftercheck(result, AppData.fast_scan)
+            remain += len(failed.dirs_copy) + len(failed.dirs_rmv) + len(failed.files_copy) + \
+                    len(failed.files_rmv) + len(failed.files_renew)
     except Exception:
-        cancel_task("백업 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        cancel_task("백업 중 오류가 발생하였습니다.\n장치 연결 상태를 확인해주세요.")
         return
 
     AppData.backup_run_time = time() - SystemValues.progress_start_time
     UiUpdater.stop()
     sleep(0.5)
-
-    remain = len(failed.dirs_copy) + len(failed.dirs_rmv) + len(failed.files_copy) + \
-            len(failed.files_rmv) + len(failed.files_renew)
 
     if remain == 0: # 더 처리할 것이 없다 -> 백업 성공
         AppData.backup_success = True 
@@ -642,21 +657,42 @@ def cancel_task(message: str):
 
 
 def run_boost():
+    # 진행 화면은 run_compare처럼 두 줄이다.
+    # 윗줄: 몇 번째 result를 최적화 중인지
+    SystemValues.progress_start_time = time()
+    SystemValues.top_progress_msg = "폴더 최적화 중"
+    SystemValues.top_progress_val = 0
+    SystemValues.top_progress_max = len(AppData.compare_results)
+    SystemValues.top_progress_path = ""
+
+    # 아랫줄: 지금 최적화 중인 result 안의 파일 진행률 (boost가 채운다)
+    SystemValues.bottom_progress_msg = "파일 최적화 중"
+    SystemValues.bottom_progress_visible = True
+    SystemValues.bottom_progress_val = 0
+    SystemValues.bottom_progress_max = 0
+    SystemValues.bottom_progress_path = ""
+
+    UiUpdater.start()
+
     try:
-        UiUpdater.start(UiUpdater.update_backup)
-        SystemValues.top_progress_msg = "검사 속도 향상을 위한 최적화"
+        # files_same은 result마다 기준 경로가 다른 상대경로라서 합치지 않고 result마다 최적화한다.
+        for result in AppData.compare_results:
+            SystemValues.top_progress_path = result.org_path.removeprefix(PREFIX_MAX_PATH)
+            boost(result)
+            SystemValues.top_progress_val += 1
 
-        SystemValues.progress_start_time = time()
-        boost(AppData.compare_result)
-
-        SystemValues.top_progress_msg = "최적화 완료"
-        UiUpdater.stop()
-        sleep(0.5)
-
-        call_in_gui_thread(show_complete)
+        # 최적화한 뒤의 종합 최적화율을 다시 기록한다.
+        AppData.optimized_percent = get_optimized_percent(AppData.compare_results)
     except Exception:
         # 최적화 중에도 장치가 바뀔 수 있으므로 다른 작업과 똑같이 중단하고 처음 화면으로 돌아간다.
-        cancel_task("최적화 중 오류가 발생하였습니다.\nUSB 인식 상태 등을 확인해주세요.")
+        cancel_task("최적화 중 오류가 발생하였습니다.\n장치 연결 상태를 확인해주세요.")
+        return
+
+    UiUpdater.stop()
+    SystemValues.bottom_progress_visible = False
+    sleep(0.5)
+
+    call_in_gui_thread(show_complete)
 
 
 def btn_prev_compare_again():

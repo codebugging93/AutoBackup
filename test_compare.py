@@ -5,6 +5,10 @@ from system.backup import backup
 
 a = r"e:\test_a"
 b = r"e:\test_b"
+a = "d:\\"
+b = "f:\\"
+
+
 # a = r"g:\Studying"
 # b = r"g:\Studying-백업본"
 # a = r"d:\WorkSpace\Alarm\windows\flutter\ephemeral\.plugin_symlinks"
@@ -17,7 +21,7 @@ b = r"e:\test_b"
 
 while True:
     t = time()
-    result = compare(a, b)
+    result = compare(a, b, skip_hidden=True)
     print(time() - t)
     result.print()
 

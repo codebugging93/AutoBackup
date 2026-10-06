@@ -404,3 +404,22 @@ def get_optimized_percent(results: list[CompareResult]) -> float:
     if same == 0:
         return 0.0
     return optimized / same * 100
+
+
+def merge_results(org_path, tar_path, results: list[CompareResult]) -> CompareResult:
+    """
+    여러 result의 복사/삭제/갱신 목록(절대경로)을 org_path/tar_path 기준의 result 하나로 합친다.
+    results의 모든 경로는 org_path/tar_path 안에 있어야 한다.
+    same 목록은 상대경로라서 합치지 않는다.
+    """
+    merged = CompareResult()
+    # compare와 똑같이 260자 경로 제한 접두사를 붙여, 목록의 경로들과 깊이를 맞춘다
+    merged.org_path = norm_max_path(org_path)
+    merged.tar_path = norm_max_path(tar_path)
+    for result in results:
+        merged.dirs_copy.extend(result.dirs_copy)
+        merged.dirs_rmv.extend(result.dirs_rmv)
+        merged.files_copy.extend(result.files_copy)
+        merged.files_rmv.extend(result.files_rmv)
+        merged.files_renew.extend(result.files_renew)
+    return merged

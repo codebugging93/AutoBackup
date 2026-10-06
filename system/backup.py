@@ -16,6 +16,7 @@ def backup(compare_result: CompareResult):
     SystemValues.top_progress_max = 0
     SystemValues.top_progress_msg = ""
     SystemValues.top_progress_path = ""
+    SystemValues.bottom_progress_visible = False 
     
     # 삭제, 갱신 등의 작업이 있다면 휴지통을 만듦
     if not (len(compare_result.files_rmv) == 0 and 
@@ -164,13 +165,14 @@ def boost(compare_result: CompareResult):
     다음 검사시에 속도를 줄일 수 있도록 최적화를 진행한다.
 
     org_path의 파일의 수정된 시간을 tar_path쪽의 파일로 복사하는 작업이다.
+    진행률은 SystemValues.bottom_progress_*에 쓴다. (진행 화면의 아랫줄)
     """
-    SystemValues.top_progress_val = 0  
-    SystemValues.top_progress_max = len(compare_result.files_same)
+    SystemValues.bottom_progress_val = 0
+    SystemValues.bottom_progress_max = len(compare_result.files_same)
     count = 0
     
     for rel_path in compare_result.files_same:
-        SystemValues.top_progress_path = rel_path
+        SystemValues.bottom_progress_path = rel_path
         file1 = merge_path(compare_result.org_path, rel_path)
         file2 = merge_path(compare_result.tar_path, rel_path)
 
@@ -185,8 +187,9 @@ def boost(compare_result: CompareResult):
         except OSError:
             pass # 최적화에 실패한 파일은 건너뜀 
         
-        SystemValues.top_progress_val += 1
+        SystemValues.bottom_progress_val += 1
 
+    compare_result.optimized_count = count # 종합 최적화율 계산용 (get_optimized_percent)
     if len(compare_result.files_same) != 0:
         compare_result.optimized_percent = count / len(compare_result.files_same) * 100
     else:
